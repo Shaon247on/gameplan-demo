@@ -41,7 +41,7 @@ export function AppSidebar() {
       url: "#",
       icon: Calendar,
     },
-  ]
+  ];
   return (
     <Sidebar>
       <SidebarGroup>
@@ -54,9 +54,11 @@ export function AppSidebar() {
         />
         <SidebarGroupContent>
           <SidebarMenu>
-            <Button variant={"primary"} className="mb-7 mt-11">
-              <Plus /> New Plans
-            </Button>
+            <Link href={"/dashboard"}>
+              <Button variant={"primary"} className="mb-7 mt-11">
+                <Plus /> New Plans
+              </Button>
+            </Link>
             {items.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild className="border-none">
@@ -75,16 +77,19 @@ export function AppSidebar() {
         <SidebarGroupContent>
           <SidebarGroupLabel>Recent plans</SidebarGroupLabel>
           <SidebarMenu>
-          {items2.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="border-none">
-                    <Link href={item.url} className="flex items-center gap-2 justify-start border-2 pl-5 mb-2">
-                      <item.icon />
-                      <span className="text-lg">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+            {items2.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild className="border-none">
+                  <Link
+                    href={item.url}
+                    className="flex items-center gap-2 justify-start border-2 pl-5 mb-2"
+                  >
+                    <item.icon />
+                    <span className="text-lg">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>

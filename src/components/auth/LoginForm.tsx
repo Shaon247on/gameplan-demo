@@ -6,6 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLoginMutation } from "@/store/features/ApiSlice";
+
+// Cookie utility function
+const setCookie = (name: string, value: string, days: number = 7) => {
+  if (typeof window === 'undefined') return
+  
+  const expires = new Date()
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`
+}
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +31,7 @@ import { loginSchema, type LoginFormData } from "@/lib/schemas/auth";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [login, { isLoading, error }] = useLoginMutation();
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -35,11 +46,21 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       console.log("Login data:", data);
-      // TODO: Implement login logic here
-      // After successful login, redirect to pricing page
-      router.push("/pricing");
+      
+      const result = await login(data).unwrap();
+      
+      console.log("Login successful:", result);
+      
+      // Store tokens in cookies
+      setCookie('access_token', result.access_token, 7); // 7 days expiry
+      setCookie('refresh_token', result.refresh_token, 7);
+      setCookie('token_type', result.token_type, 7);
+      
+      // After successful login, redirect to dashboard
+      router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
+      alert("Login failed. Please check your credentials and try again.");
     }
   };
 
@@ -115,9 +136,9 @@ export function LoginForm() {
           type="submit"
           variant={"primary"}
           className="w-full rounded-full h-[54px]"
-          disabled={form.formState.isSubmitting}
+          disabled={form.formState.isSubmitting || isLoading}
         >
-          {form.formState.isSubmitting ? "LOGGING IN..." : "LOGIN"}
+          {form.formState.isSubmitting || isLoading ? "LOGGING IN..." : "LOGIN"}
         </Button>
       </form>
     </Form>

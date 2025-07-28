@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSignUpMutation } from "@/store/features/ApiSlice";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import { signUpSchema, type SignUpFormData } from "@/lib/schemas/auth";
 export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [signUp, { isLoading, error }] = useSignUpMutation();
 
   const form = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
@@ -41,11 +43,41 @@ export function SignUpForm() {
   const onSubmit = async (data: SignUpFormData) => {
     try {
       console.log("Sign up data:", data);
-      // TODO: Implement signup logic here
-      // After successful signup, redirect to pricing page
-      router.push("/pricing");
+      
+      // Transform form data to match API requirements
+      const signUpData = {
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        confirm_password: data.confirmPassword,
+        agreed_to_terms: data.acceptTerms,
+      };
+
+      const result = await signUp(signUpData).unwrap();
+      
+      console.log("API Response:", result);
+      
+      // Check if the response indicates success (either by success field or message)
+      if (result.success || result.message?.includes("successfully") || result.status === "success") {
+        console.log("Signup successful:", result);
+        // After successful signup, redirect to pricing page
+        router.push("/pricing");
+      } else {
+        console.error("Signup failed:", result.message);
+        alert(result.message || "Signup failed");
+      }
     } catch (error) {
       console.error("Signup error:", error);
+      // If the error contains a success message, treat it as success
+      if (error && typeof error === 'object' && 'data' in error) {
+        const errorData = (error as { data?: { message?: string } }).data;
+        if (errorData?.message?.includes("successfully")) {
+          console.log("Signup successful despite error wrapper:", errorData);
+          router.push("/pricing");
+          return;
+        }
+      }
+      alert("Signup failed. Please try again.");
     }
   };
 
@@ -174,9 +206,9 @@ export function SignUpForm() {
           type="submit"
           variant={"primary"}
           className="w-full rounded-full h-[54px]"
-          disabled={form.formState.isSubmitting}
+          disabled={form.formState.isSubmitting || isLoading}
         >
-          {form.formState.isSubmitting ? "SIGNING UP..." : "SIGN UP"}
+          {form.formState.isSubmitting || isLoading ? "SIGNING UP..." : "SIGN UP"}
         </Button>
       </form>
     </Form>

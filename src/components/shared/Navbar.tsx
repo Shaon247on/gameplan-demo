@@ -1,12 +1,29 @@
-'use client'
+"use client";
 
 import React, { useState } from "react";
-import { Bell, ChevronDown, User, Settings, HelpCircle, FileText, Shield, LogOut, Moon } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  User,
+  Settings,
+  HelpCircle,
+  FileText,
+  Shield,
+  LogOut,
+  Moon,
+} from "lucide-react";
 import { useAuthContext } from "@/components/auth/AuthProvider";
-import { useAppDispatch } from "@/store/hooks";
-import { logoutUser } from "@/store/features/authSlice";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLogoutMutation } from "@/store/features/ApiSlice";
+import {
+  ProfileModal,
+  ManageSubscriptionModal,
+  FAQModal,
+  HelpSupportModal,
+  TermsConditionsModal,
+  PrivacyModal,
+} from "@/components/modals/ProfileModals";
 
 interface ProfileMenuItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -19,24 +36,58 @@ interface ProfileMenuItem {
 export default function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const { user } = useAuthContext();
-  const dispatch = useAppDispatch();
+  const [logout] = useLogoutMutation();
   const router = useRouter();
 
   const handleLogout = async () => {
-    await dispatch(logoutUser());
-    router.push('/login');
+    try {
+      await logout().unwrap();
+      console.log("Logout successful");
+      router.push("/login");
+      setIsProfileOpen(false);
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if the API call fails, clear local state and redirect
+      router.push("/login");
+      setIsProfileOpen(false);
+    }
+  };
+
+  const handleModalOpen = (modalType: string) => {
+    setActiveModal(modalType);
     setIsProfileOpen(false);
   };
 
+  const handleModalClose = () => {
+    setActiveModal(null);
+  };
+
   const profileMenuItems: ProfileMenuItem[] = [
-    { icon: User, label: 'PROFILE', href: '/dashboard/profile' },
-    { icon: Settings, label: 'MANAGE SUBSCRIPTION', href: '/dashboard/subscription' },
-    { icon: HelpCircle, label: 'FAQ', href: '/dashboard/faq' },
-    { icon: HelpCircle, label: 'HELP & SUPPORT', href: '/dashboard/support' },
-    { icon: FileText, label: 'TERMS & CONDITIONS', href: '/dashboard/terms' },
-    { icon: Shield, label: 'PRIVACY', href: '/dashboard/privacy' },
-    { icon: LogOut, label: 'Log Out', action: handleLogout, isRed: true },
+    { icon: User, label: "PROFILE", action: () => handleModalOpen("profile") },
+    {
+      icon: Settings,
+      label: "MANAGE SUBSCRIPTION",
+      action: () => handleModalOpen("subscription"),
+    },
+    { icon: HelpCircle, label: "FAQ", action: () => handleModalOpen("faq") },
+    {
+      icon: HelpCircle,
+      label: "HELP & SUPPORT",
+      action: () => handleModalOpen("support"),
+    },
+    {
+      icon: FileText,
+      label: "TERMS & CONDITIONS",
+      action: () => handleModalOpen("terms"),
+    },
+    {
+      icon: Shield,
+      label: "PRIVACY",
+      action: () => handleModalOpen("privacy"),
+    },
+    { icon: LogOut, label: "Log Out", action: handleLogout, isRed: true },
   ];
 
   return (
@@ -45,13 +96,13 @@ export default function Navbar() {
         <div className="flex items-center space-x-4">
           <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
             <Bell className="w-5 h-5 text-gray-600" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
           </button>
-          
+
           {/* User Profile Dropdown */}
           <div className="relative">
             <button
@@ -64,13 +115,17 @@ export default function Navbar() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-semibold text-gray-800">
-                    {user?.name || 'Dr. Ali'}
+                    {user?.name || "Dr. Ali"}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {user?.role || 'Medicine specialist'}
+                    {user?.role || "Medicine specialist"}
                   </p>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`w-4 h-4 text-gray-600 transition-transform ${
+                    isProfileOpen ? "rotate-180" : ""
+                  }`}
+                />
               </div>
             </button>
 
@@ -92,10 +147,10 @@ export default function Navbar() {
                       </div>
                       <div>
                         <p className="font-semibold text-gray-800">
-                          {user?.name || 'Dr. Ali'}
+                          {user?.name || "Dr. Ali"}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {user?.role || 'Medicine specialist'}
+                          {user?.role || "Medicine specialist"}
                         </p>
                       </div>
                     </div>
@@ -110,17 +165,22 @@ export default function Navbar() {
                             onClick={() => {
                               if (item.action) {
                                 item.action();
-                              } else if (item.href) {
-                                router.push(item.href);
                               }
-                              setIsProfileOpen(false);
                             }}
                             className={`w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left ${
-                              item.isRed ? 'text-red-600 hover:text-red-700' : 'text-gray-700 hover:text-gray-900'
+                              item.isRed
+                                ? "text-red-600 hover:text-red-700"
+                                : "text-gray-700 hover:text-gray-900"
                             }`}
                           >
-                            <Icon className={`w-5 h-5 ${item.isRed ? 'text-red-600' : 'text-gray-500'}`} />
-                            <span className="text-sm font-medium">{item.label}</span>
+                            <Icon
+                              className={`w-5 h-5 ${
+                                item.isRed ? "text-red-600" : "text-gray-500"
+                              }`}
+                            />
+                            <span className="text-sm font-medium">
+                              {item.label}
+                            </span>
                           </button>
                         );
                       })}
@@ -131,17 +191,19 @@ export default function Navbar() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <Moon className="w-5 h-5 text-gray-500" />
-                          <span className="text-sm font-medium text-gray-700">MOOD</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            MOOD
+                          </span>
                         </div>
                         <button
                           onClick={() => setIsDarkMode(!isDarkMode)}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            isDarkMode ? 'bg-purple-600' : 'bg-gray-200'
+                            isDarkMode ? "bg-purple-600" : "bg-gray-200"
                           }`}
                         >
                           <span
                             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              isDarkMode ? 'translate-x-6' : 'translate-x-1'
+                              isDarkMode ? "translate-x-6" : "translate-x-1"
                             }`}
                           />
                         </button>
@@ -154,6 +216,29 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <ProfileModal
+        isOpen={activeModal === "profile"}
+        onClose={handleModalClose}
+      />
+      <ManageSubscriptionModal
+        isOpen={activeModal === "subscription"}
+        onClose={handleModalClose}
+      />
+      <FAQModal isOpen={activeModal === "faq"} onClose={handleModalClose} />
+      <HelpSupportModal
+        isOpen={activeModal === "support"}
+        onClose={handleModalClose}
+      />
+      <TermsConditionsModal
+        isOpen={activeModal === "terms"}
+        onClose={handleModalClose}
+      />
+      <PrivacyModal
+        isOpen={activeModal === "privacy"}
+        onClose={handleModalClose}
+      />
     </nav>
   );
 }

@@ -1,5 +1,20 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number = 7) => {
+  if (typeof window === 'undefined') return
+  
+  const expires = new Date()
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`
+}
+
+const removeCookie = (name: string) => {
+  if (typeof window === 'undefined') return
+  
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+}
+
 // Define types for our dummy data
 export interface User {
   id: number
@@ -22,6 +37,33 @@ export interface CreateUserRequest {
   role: string
 }
 
+export interface SignUpRequest {
+  username: string
+  email: string
+  password: string
+  confirm_password: string
+  agreed_to_terms: boolean
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface SignUpResponse {
+  success?: boolean
+  message: string
+  status?: string
+  user?: User
+  token?: string
+}
+
+export interface LoginResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+}
+
 export interface UpdateUserRequest {
   id: number
   name?: string
@@ -39,20 +81,25 @@ export interface CreatePostRequest {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: 'https://api.example.com', // Replace with your actual API base URL
-    prepareHeaders: (headers, { getState }) => {
+    baseUrl: 'https://127702b1a191.ngrok-free.app', // Your actual API base URL
+    prepareHeaders: (headers) => {
       // Add any default headers here (e.g., authorization)
       headers.set('Content-Type', 'application/json')
       
       // Get token from cookies for authentication (only on client side)
       if (typeof window !== 'undefined') {
-        const token = document.cookie
+        const accessToken = document.cookie
           .split('; ')
-          .find(row => row.startsWith('auth_token='))
+          .find(row => row.startsWith('access_token='))
           ?.split('=')[1]
         
-        if (token) {
-          headers.set('Authorization', `Bearer ${token}`)
+        const tokenType = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('token_type='))
+          ?.split('=')[1] || 'bearer'
+        
+        if (accessToken) {
+          headers.set('Authorization', `${tokenType} ${accessToken}`)
         }
       }
       
@@ -61,139 +108,43 @@ export const apiSlice = createApi({
   }),
   tagTypes: ['User', 'Post'], // Define cache tags for invalidation
   endpoints: (builder) => ({
-    // User endpoints
-    getUsers: builder.query<User[], void>({
-      query: () => '/users',
-      providesTags: ['User'],
-    }),
+
     
-    getUserById: builder.query<User, number>({
-      query: (id) => `/users/${id}`,
-      providesTags: (result, error, id) => [{ type: 'User', id }],
-    }),
-    
-    createUser: builder.mutation<User, CreateUserRequest>({
-      query: (user) => ({
-        url: '/users',
+    // Auth endpoints
+
+    signUp: builder.mutation<SignUpResponse, SignUpRequest>({
+      query: (credentials) => ({
+        url: '/api/auth/signup',
         method: 'POST',
-        body: user,
+        body: credentials,
       }),
-      invalidatesTags: ['User'],
     }),
-    
-    updateUser: builder.mutation<User, UpdateUserRequest>({
-      query: ({ id, ...patch }) => ({
-        url: `/users/${id}`,
-        method: 'PATCH',
-        body: patch,
-      }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'User', id },
-        'User'
-      ],
-    }),
-    
-    deleteUser: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `/users/${id}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: ['User'],
-    }),
-    
-    // Post endpoints
-    getPosts: builder.query<Post[], void>({
-      query: () => '/posts',
-      providesTags: ['Post'],
-    }),
-    
-    getPostById: builder.query<Post, number>({
-      query: (id) => `/posts/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Post', id }],
-    }),
-    
-    getPostsByUser: builder.query<Post[], number>({
-      query: (userId) => `/users/${userId}/posts`,
-      providesTags: (result, error, userId) => [
-        { type: 'Post', id: 'LIST' },
-        ...(result?.map(({ id }) => ({ type: 'Post' as const, id })) ?? [])
-      ],
-    }),
-    
-    createPost: builder.mutation<Post, CreatePostRequest>({
-      query: (post) => ({
-        url: '/posts',
+
+    login: builder.mutation<LoginResponse, LoginRequest>({
+      query: (credentials) => ({
+        url: '/api/auth/login',
         method: 'POST',
-        body: post,
+        body: credentials,
       }),
-      invalidatesTags: ['Post'],
+      // No cache invalidation needed for login
     }),
-    
-    updatePost: builder.mutation<Post, Partial<Post> & { id: number }>({
-      query: ({ id, ...patch }) => ({
-        url: `/posts/${id}`,
-        method: 'PATCH',
-        body: patch,
-      }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'Post', id },
-        'Post'
-      ],
-    }),
-    
-    deletePost: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `/posts/${id}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: ['Post'],
-    }),
-    
-    // Example of a more complex query with parameters
-    searchUsers: builder.query<User[], { query: string; limit?: number }>({
-      query: ({ query, limit = 10 }) => ({
-        url: '/users/search',
-        params: { q: query, limit },
-      }),
-      providesTags: ['User'],
-    }),
-    
-    // Example of a mutation that doesn't return data
-    uploadAvatar: builder.mutation<{ success: boolean }, { userId: number; file: File }>({
-      query: ({ userId, file }) => {
-        const formData = new FormData()
-        formData.append('avatar', file)
-        return {
-          url: `/users/${userId}/avatar`,
-          method: 'POST',
-          body: formData,
-        }
+
+    logout: builder.mutation<{ success: boolean }, void>({
+      // No API call needed for logout, just clear cookies
+      queryFn: async () => {
+        removeCookie('access_token')
+        removeCookie('refresh_token')
+        removeCookie('token_type')
+        return { data: { success: true } }
       },
-      invalidatesTags: (result, error, { userId }) => [
-        { type: 'User', id: userId }
-      ],
     }),
   }),
 })
 
 // Export auto-generated hooks
 export const {
-  // User hooks
-  useGetUsersQuery,
-  useGetUserByIdQuery,
-  useCreateUserMutation,
-  useUpdateUserMutation,
-  useDeleteUserMutation,
-  
-  // Post hooks
-  useGetPostsQuery,
-  useGetPostByIdQuery,
-  useGetPostsByUserQuery,
-  useCreatePostMutation,
-  useUpdatePostMutation,
-  useDeletePostMutation,
-  
-  // Other hooks
-  useSearchUsersQuery,
-  useUploadAvatarMutation,
+  // Auth hooks
+  useSignUpMutation,
+  useLoginMutation,
+  useLogoutMutation,
 } = apiSlice 
