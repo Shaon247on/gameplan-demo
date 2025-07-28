@@ -1,13 +1,5 @@
-import { Button } from "@/components/ui/button";
-
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div>
-      Hello world
-      <Button variant={"primary"}>Tap tap</Button>
-      <Button variant={"optional"}>Tap tap</Button>
-      <Button variant={"default"}>Tap tap</Button>
-    </div>
-  );
+  redirect("/login");
 }
