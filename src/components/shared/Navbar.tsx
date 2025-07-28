@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Bell,
   ChevronDown,
@@ -37,9 +37,29 @@ export default function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [userName, setUserName] = useState('Dr. Ali');
+  const [userRole, setUserRole] = useState('Medicine specialist');
   const { user } = useAuthContext();
   const [logout] = useLogoutMutation();
   const router = useRouter();
+
+  // Get user data from session storage
+  useEffect(() => {
+    const storedProfile = sessionStorage.getItem('userProfile');
+    const storedEmail = sessionStorage.getItem('userEmail');
+    
+    if (storedProfile) {
+      try {
+        const profile = JSON.parse(storedProfile);
+        setUserName(profile.name || 'Dr. Ali');
+        setUserRole(profile.role || 'Medicine specialist');
+      } catch (error) {
+        console.error('Error parsing user profile:', error);
+      }
+    } else if (storedEmail) {
+      setUserName(storedEmail.split('@')[0] || 'Dr. Ali');
+    }
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -56,6 +76,12 @@ export default function Navbar() {
   };
 
   const handleModalOpen = (modalType: string) => {
+    // Check if we're on mobile and redirect to mobile profile page
+    if (window.innerWidth < 768) {
+      router.push('/dashboard/profile');
+      return;
+    }
+    
     setActiveModal(modalType);
     setIsProfileOpen(false);
   };
@@ -115,10 +141,10 @@ export default function Navbar() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-semibold text-gray-800">
-                    {user?.name || "Dr. Ali"}
+                    {userName}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {user?.role || "Medicine specialist"}
+                    {userRole}
                   </p>
                 </div>
                 <ChevronDown

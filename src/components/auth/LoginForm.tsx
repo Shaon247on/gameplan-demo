@@ -56,6 +56,10 @@ export function LoginForm() {
       setCookie('refresh_token', result.refresh_token, 7);
       setCookie('token_type', result.token_type, 7);
       
+      // Store login data in sessionStorage for immediate access
+      sessionStorage.setItem('isLoggedIn', 'true');
+      sessionStorage.setItem('userEmail', data.email);
+      
       // After successful login, redirect to dashboard
       router.push("/dashboard");
     } catch (error) {

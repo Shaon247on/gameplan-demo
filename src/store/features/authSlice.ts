@@ -205,6 +205,7 @@ const authSlice = createSlice({
         state.user = { ...state.user, ...action.payload }
       }
     },
+
   },
   extraReducers: (builder) => {
     // Login

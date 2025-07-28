@@ -145,11 +145,19 @@ export const apiSlice = createApi({
     }),
 
     logout: builder.mutation<{ success: boolean }, void>({
-      // No API call needed for logout, just clear cookies
+      // No API call needed for logout, just clear cookies and session
       queryFn: async () => {
         removeCookie('access_token')
         removeCookie('refresh_token')
         removeCookie('token_type')
+        
+        // Clear session storage
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('isLoggedIn')
+          sessionStorage.removeItem('userEmail')
+          sessionStorage.removeItem('userProfile')
+        }
+        
         return { data: { success: true } }
       },
     }),
@@ -178,6 +186,12 @@ export const apiSlice = createApi({
         body: data,
       }),
     }),
+
+    // User profile endpoint
+    getUserProfile: builder.query<User, void>({
+      query: () => '/api/auth/me',
+      providesTags: ['User'],
+    }),
   }),
 })
 
@@ -190,4 +204,5 @@ export const {
   useRequestForgotPasswordCodeMutation,
   useVerifyForgotPasswordCodeMutation,
   useResetPasswordMutation,
+  useGetUserProfileQuery,
 } = apiSlice 
