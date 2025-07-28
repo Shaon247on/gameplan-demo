@@ -50,6 +50,21 @@ export interface LoginRequest {
   password: string
 }
 
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface VerifyCodeRequest {
+  email: string
+  code: string
+}
+
+export interface ResetPasswordRequest {
+  email: string
+  new_password: string
+  code: string
+}
+
 export interface SignUpResponse {
   success?: boolean
   message: string
@@ -81,7 +96,7 @@ export interface CreatePostRequest {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: 'https://127702b1a191.ngrok-free.app', // Your actual API base URL
+    baseUrl: 'https://93dddca0bf3f.ngrok-free.app', // Your actual API base URL
     prepareHeaders: (headers) => {
       // Add any default headers here (e.g., authorization)
       headers.set('Content-Type', 'application/json')
@@ -138,6 +153,31 @@ export const apiSlice = createApi({
         return { data: { success: true } }
       },
     }),
+
+    // Forgot Password endpoints
+    requestForgotPasswordCode: builder.mutation<string, ForgotPasswordRequest>({
+      query: (data) => ({
+        url: '/api/auth/forgot-password/request-code',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    verifyForgotPasswordCode: builder.mutation<string, VerifyCodeRequest>({
+      query: (data) => ({
+        url: '/api/auth/forgot-password/verify-code',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    resetPassword: builder.mutation<string, ResetPasswordRequest>({
+      query: (data) => ({
+        url: '/api/auth/forgot-password/reset',
+        method: 'POST',
+        body: data,
+      }),
+    }),
   }),
 })
 
@@ -147,4 +187,7 @@ export const {
   useSignUpMutation,
   useLoginMutation,
   useLogoutMutation,
+  useRequestForgotPasswordCodeMutation,
+  useVerifyForgotPasswordCodeMutation,
+  useResetPasswordMutation,
 } = apiSlice 

@@ -21,7 +21,7 @@ export function AppSidebar() {
     },
     {
       title: "Create Class",
-      url: "/dashboard/class",
+      url: "/dashboard/create-class",
       icon: Plus,
     },
   ];

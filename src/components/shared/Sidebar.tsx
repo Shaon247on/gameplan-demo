@@ -19,7 +19,7 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   { icon: Calendar, label: "Calendar", href: "/dashboard/calendar" },
-  { icon: Plus, label: "Create Class", href: "/dashboard/class" },
+  { icon: Plus, label: "Create Class", href: "/dashboard/create-class" },
 ];
 
 export default function Sidebar() {

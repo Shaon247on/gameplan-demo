@@ -12,7 +12,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: RotateCcw, label: 'History', href: '/dashboard/history' },
-  { icon: FileText, label: 'My Classes', href: '/dashboard/classes' },
+  { icon: FileText, label: 'My Classes', href: '/dashboard/create-class' },
   { icon: Sparkles, label: 'Chat', href: '/dashboard/new-plan' },
   { icon: Calendar, label: 'Calendar', href: '/dashboard/calendar' },
   { icon: User, label: 'Profile', href: '/dashboard/profile' },
