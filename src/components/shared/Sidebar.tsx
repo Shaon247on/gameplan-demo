@@ -102,7 +102,11 @@ export default function Sidebar() {
               {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-2">
           <motion.button
-            onClick={() => console.log('New Plans clicked')}
+            onClick={() => {
+              // Clear any existing chat state and navigate to dashboard
+              sessionStorage.removeItem('chatMessages');
+              window.location.href = '/dashboard?newPlan=true';
+            }}
             className="flex items-center justify-center h-12 rounded-md bg-gradient-to-r from-[#051DA9] to-[#591DA9] text-white hover:from-[#3A40C7] hover:to-[#6F2BA7] transition-all duration-300 shadow-lg w-full mb-5"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

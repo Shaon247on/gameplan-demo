@@ -4,8 +4,32 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm, SocialLogin } from "@/components/auth";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error) {
+      switch (error) {
+        case 'google_auth_failed':
+          setErrorMessage('Google authentication failed. Please try again.');
+          break;
+        case 'no_auth_code':
+          setErrorMessage('No authorization code received from Google.');
+          break;
+        case 'google_callback_failed':
+          setErrorMessage('Failed to complete Google sign in. Please try again.');
+          break;
+        default:
+          setErrorMessage('An error occurred during authentication.');
+      }
+    }
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 md:px-4">
       <Card className="w-full max-w-lg md:px-3">
@@ -21,6 +45,12 @@ export default function LoginPage() {
           </p>
         </CardHeader>
         <CardContent>
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{errorMessage}</p>
+            </div>
+          )}
+          
           <LoginForm />
 
           <div className="mt-6 text-center">

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { User, Mail, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { useCreatePlanMutation } from '@/store/features/ApiSlice';
 
 interface ProfileModalsProps {
   isOpen: boolean;
@@ -315,4 +317,103 @@ export function PrivacyModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       </DialogContent>
     </Dialog>
   );
+} 
+
+export function PlanCreationModal() {
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
+  const [planData, setPlanData] = useState({
+    title: '',
+    description: '',
+    start_date: '',
+    end_date: ''
+  })
+  
+  const [createPlan, { isLoading: isCreatingPlan }] = useCreatePlanMutation()
+
+  const handleCreatePlan = async () => {
+    if (!planData.title || !planData.description) {
+      console.error('Please fill in all required fields')
+      return
+    }
+
+    try {
+      await createPlan({
+        ...planData,
+        start_date: planData.start_date || new Date().toISOString(),
+        end_date: planData.end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      }).unwrap()
+      
+      console.log('Plan created successfully!')
+      setIsPlanModalOpen(false)
+      setPlanData({ title: '', description: '', start_date: '', end_date: '' })
+    } catch (error) {
+      console.error('Failed to create plan. Please try again.')
+      console.error('Error creating plan:', error)
+    }
+  }
+
+  return (
+    <>
+      {/* Plan Creation Modal */}
+      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Plan</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                value={planData.title}
+                onChange={(e) => setPlanData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter plan title"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description *</Label>
+              <Textarea
+                id="description"
+                value={planData.description}
+                onChange={(e) => setPlanData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter plan description"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="start_date">Start Date</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={planData.start_date}
+                  onChange={(e) => setPlanData(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="end_date">End Date</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={planData.end_date}
+                  onChange={(e) => setPlanData(prev => ({ ...prev, end_date: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsPlanModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreatePlan} 
+              disabled={isCreatingPlan || !planData.title || !planData.description}
+            >
+              {isCreatingPlan ? 'Creating...' : 'Create Plan'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
 } 
