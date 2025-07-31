@@ -1,29 +1,32 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Send, Plus, Check, Menu } from "lucide-react";
+import { Send, Check, Menu } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
   useCreatePlanMutation,
-  useGetLastPlanQuery,
   useUpdatePlanMutation,
   useSendMessageMutation,
 } from "@/store/features/ApiSlice";
 import useAccessToken from "@/hooks/useAccessToken";
+import { useAppSelector } from "@/store/hooks";
+import { RootState } from "@/store/store";
+import { useDispatch } from "react-redux";
 
 interface SuggestionButton {
   id: number;
   text: string;
 }
 
-interface ChatMessage {
-  id: number;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
+export interface ChatMessage {
+  message_text: string;
+  id: string;
+  chat_id: string;
+  sender_id: string;
+  receiver_id: string;
+  timestamp: string;
 }
 
 const suggestionButtons: SuggestionButton[] = [
@@ -34,28 +37,28 @@ const suggestionButtons: SuggestionButton[] = [
 ];
 
 export default function NewPlanPage() {
+  const dispatch = useDispatch()
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const { activeMessages } = useAppSelector((state: RootState) => state.chat);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [plans, setPlans] = useState([]);
+  console.log("from the chatSection:",activeMessages)
+
+  console.log("active message:", activeMessages);
 
   const searchParams = useSearchParams();
   const accessToken = useAccessToken();
   console.log("Access Token:", accessToken);
 
   // Plan-related hooks
-  const [createPlan, { isLoading: isCreatingPlan }] = useCreatePlanMutation();
-  const [updatePlan, { isLoading: isUpdatingPlan }] = useUpdatePlanMutation();
-  const { data: lastPlan } = useGetLastPlanQuery();
+
+  // console.log("Recent chats:", chatData);
+  console.log("All chats:", messages);
 
   // Chat-related hooks
-  const [sendMessage, { isLoading: isSendingMessage }] =
-    useSendMessageMutation();
+  const [sendMessage] = useSendMessageMutation();
 
   // Check if this is a new plan request
   useEffect(() => {
@@ -63,151 +66,103 @@ export default function NewPlanPage() {
     if (isNewPlan === "true") {
       // Clear the chat and start fresh
       setMessages([]);
-      setCurrentPlanId(null);
       setCurrentChatId(null);
       // Clear the URL parameter
       window.history.replaceState({}, "", "/dashboard");
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (activeMessages?.length !== 0) {
+      setMessages(activeMessages);
+    } else {
+      setMessages([]);
+    }
+  }, [activeMessages]);
+
   const handleSendMessage = async () => {
     console.log(inputText, "user query");
-    // const response = await sendMessage({message_text: inputText})
-    const response = await fetch(
-      "https://731gglsx-8000.inc1.devtunnels.ms/api/plans/",
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      }
-    );
 
-    console.log("Chat response:", response);
     if (inputText.trim()) {
       const userMessage: ChatMessage = {
-        id: Date.now(),
-        text: inputText,
-        isUser: true,
-        timestamp: new Date(),
+        id: Date.now().toString(),
+        message_text: inputText,
+        chat_id: currentChatId || "", // Use current chat_id
+        sender_id: "user-id", // Replace with actual user ID
+        receiver_id: "assistant-id", // Replace with actual assistant ID
+        timestamp: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, userMessage]);
       const currentInputText = inputText;
       setInputText("");
 
-      // If this is the first message, create a new plan
-      if (messages.length === 0) {
-        try {
-          const planData = {
-            title: currentInputText,
-            description: `User: ${currentInputText}`,
-            start_date: new Date().toISOString(),
-            end_date: new Date(
-              Date.now() + 30 * 24 * 60 * 60 * 1000
-            ).toISOString(), // 30 days from now
-          };
-
-          const createdPlan = await createPlan(planData).unwrap();
-          setCurrentPlanId(createdPlan.id);
-          console.log("Plan created:", createdPlan);
-        } catch (error) {
-          console.error("Error creating plan:", error);
-        }
-      }
-
-      // Send message to API and get AI response using RTK Query
       try {
         const aiResponse = await sendMessage({
           message_text: currentInputText,
         }).unwrap();
 
-        const aiMessage: ChatMessage = {
-          id: Date.now() + 1,
-          text: aiResponse.message_text,
-          isUser: false,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMessage]);
+        // console.log(aiMessage, "AI response");
+        setMessages((prev) => [...prev, aiResponse]);
         setCurrentChatId(aiResponse.chat_id);
-
-        // Update plan with conversation
-        if (currentPlanId) {
-          try {
-            const allMessages = messages.concat([userMessage, aiMessage]);
-            const updatedDescription = allMessages
-              .map((msg) => `${msg.isUser ? "User" : "AI"}: ${msg.text}`)
-              .join("\n");
-
-            await updatePlan({
-              id: currentPlanId,
-              plan: {
-                description: updatedDescription,
-              },
-            }).unwrap();
-            console.log("Plan updated with conversation:", currentPlanId);
-          } catch (error) {
-            console.error("Error updating plan with conversation:", error);
-          }
-        }
       } catch (error) {
         console.error("Error getting AI response:", error);
-        // Fallback response
+        // Fallback response if there's an error
         const fallbackMessage: ChatMessage = {
-          id: Date.now() + 1,
-          text: "I'm here to help you create your plan! What specific details would you like to include?",
-          isUser: false,
-          timestamp: new Date(),
+          id: Date.now().toString(),
+          message_text: "Sorry we are failed to get AI response.",
+          chat_id: currentChatId || "",
+          sender_id: "assistant-id", // Replace with actual assistant ID
+          receiver_id: "user-id", // Replace with actual user ID
+          timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, fallbackMessage]);
       }
     }
   };
 
-  const handleCreatePlan = async () => {
-    if (messages.length === 0) return;
+  // const handleCreatePlan = async () => {
+  //   if (messages.length === 0) return;
 
-    try {
-      // Extract the last user message as the plan title
-      const lastUserMessage =
-        messages.filter((msg) => msg.isUser).pop()?.text || "New Plan";
+  //   try {
+  //     // Extract the last user message as the plan title
+  //     const lastUserMessage =
+  //       messages.filter((msg) => msg.isUser).pop()?.text || "New Plan";
 
-      const planData = {
-        title: lastUserMessage,
-        description: messages
-          .map((msg) => `${msg.isUser ? "User" : "AI"}: ${msg.text}`)
-          .join("\n"),
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-      };
+  //     const planData = {
+  //       title: lastUserMessage,
+  //       description: messages
+  //         .map((msg) => `${msg.isUser ? "User" : "AI"}: ${msg.text}`)
+  //         .join("\n"),
+  //       start_date: new Date().toISOString(),
+  //       end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+  //     };
 
-      await createPlan(planData).unwrap();
+  //     await createPlan(planData).unwrap();
 
-      // Add a success message
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 2,
-          text: "✅ Plan created successfully! You can find it in your recent plans.",
-          isUser: false,
-          timestamp: new Date(),
-        },
-      ]);
-    } catch (error) {
-      console.error("Error creating plan:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 2,
-          text: "❌ Failed to create plan. Please try again.",
-          isUser: false,
-          timestamp: new Date(),
-        },
-      ]);
-    }
-  };
+  //     // Add a success message
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       {
+  //         id: Date.now() + 2,
+  //         text: "✅ Plan created successfully! You can find it in your recent plans.",
+  //         isUser: false,
+  //         timestamp: new Date(),
+  //       },
+  //     ]);
+  //   } catch (error) {
+  //     console.error("Error creating plan:", error);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       {
+  //         id: Date.now() + 2,
+  //         text: "❌ Failed to create plan. Please try again.",
+  //         isUser: false,
+  //         timestamp: new Date(),
+  //       },
+  //     ]);
+  //   }
+  // };
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputText(suggestion);
@@ -230,13 +185,10 @@ export default function NewPlanPage() {
     }
   };
 
-
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Main Chat Container */}
-      {/* <Button variant={"primary"} size={"lg"} onClick={postPlan}>
-        Post Plan
-      </Button> */}
+
       <div className="flex-1 flex flex-col w-full">
         {/* Chat Box */}
         <motion.div
@@ -271,12 +223,8 @@ export default function NewPlanPage() {
                     className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-48"
                   >
                     <div className="py-2">
-                      <button
-                        onClick={handleCreatePlan}
-                        disabled={isCreatingPlan || messages.length === 0}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors text-gray-700 disabled:opacity-50"
-                      >
-                        {isCreatingPlan ? "Creating Plan..." : "Save as Plan"}
+                      <button className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors text-gray-700 disabled:opacity-50">
+                        Save as Plan
                       </button>
                       <button className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors text-gray-700">
                         Pin To Calendar
@@ -320,38 +268,7 @@ export default function NewPlanPage() {
 
                 {/* Quick Start Options */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg w-full">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      🎯 Goal Setting
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Define clear objectives and create actionable steps
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      📅 Project Planning
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Break down complex projects into manageable tasks
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      🚀 Strategy Development
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Create winning strategies for any challenge
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      📊 Analysis & Insights
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Get data-driven insights and recommendations
-                    </p>
-                  </div>
+                  {/* Options for quick start */}
                 </div>
 
                 {/* Getting Started Message */}
@@ -369,13 +286,15 @@ export default function NewPlanPage() {
                 <motion.div
                   key={message.id}
                   className={`flex items-start space-x-3 ${
-                    message.isUser ? "justify-start" : "justify-end"
+                    message.sender_id === "user-id"
+                      ? "justify-start"
+                      : "justify-end"
                   }`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {message.isUser ? (
+                  {message.sender_id === "user-id" || message.sender_id !== "00000000-0000-0000-0000-000000000001"  ? (
                     <>
                       {/* User Avatar */}
                       <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
@@ -383,7 +302,9 @@ export default function NewPlanPage() {
                       </div>
                       {/* User Message */}
                       <div className="max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-lg border border-gray-300 bg-white">
-                        <p className="text-gray-900 text-sm">{message.text}</p>
+                        <p className="text-gray-900 text-sm">
+                          {message.message_text}
+                        </p>
                       </div>
                     </>
                   ) : (
@@ -391,7 +312,7 @@ export default function NewPlanPage() {
                       {/* Assistant Message */}
                       <div className="max-w-xs md:max-w-md lg:max-w-lg px-6 py-4 rounded-lg border border-purple-300 bg-purple-50">
                         <p className="text-purple-900 text-sm">
-                          {message.text}
+                          {message.message_text}
                         </p>
                       </div>
                       {/* Assistant Avatar */}

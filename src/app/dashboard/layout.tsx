@@ -8,21 +8,21 @@ import { SidebarProvider } from "@/components/shared/SidebarContext";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <StoreProvider>
-      <AuthProvider>
-        <SidebarProvider>
-          <div className="flex h-screen bg-gray-50">
-            <Sidebar />
-            <MainContent>
-              <Navbar />
-              <main className="flex-1 p-2 md:p-4 lg:p-6 overflow-auto">
-                {children}
-              </main>
-            </MainContent>
-            <MobileBottomNav />
-          </div>
-        </SidebarProvider>
-      </AuthProvider>
-    </StoreProvider>
+      <StoreProvider>
+        <AuthProvider>
+          <SidebarProvider>
+            <div className="flex h-screen bg-gray-50">
+              <Sidebar />
+              <MainContent>
+                <Navbar />
+                <main className="flex-1 p-2 md:p-4 lg:p-6 overflow-auto">
+                  {children}
+                </main>
+              </MainContent>
+              <MobileBottomNav />
+            </div>
+          </SidebarProvider>
+        </AuthProvider>
+      </StoreProvider>
   );
 }

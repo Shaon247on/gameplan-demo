@@ -1,10 +1,11 @@
+import { ChatMessage } from "@/app/dashboard/page";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface ChatState {
   recentPlans: any[];
   currentPlanId: string | null;
   currentChatId: string | null;
-  activeMessages: any[];
+  activeMessages: ChatMessage[];
 }
 
 const initialState: ChatState = {
@@ -27,10 +28,10 @@ const chatSlice = createSlice({
     setCurrentChat: (state, action: PayloadAction<string>) => {
       state.currentChatId = action.payload;
     },
-    setActiveMessages: (state, action: PayloadAction<any[]>) => {
+    setActiveMessages: (state, action: PayloadAction<ChatMessage[]>) => {
       state.activeMessages = action.payload;
     },
-    addMessageToActiveChat: (state, action: PayloadAction<any>) => {
+    addMessageToActiveChat: (state, action: PayloadAction<ChatMessage>) => {
       state.activeMessages.push(action.payload);
     },
     clearActiveChat: (state) => {

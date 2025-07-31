@@ -120,6 +120,8 @@ export interface UpdatePlanRequest {
 
 export interface ChatResponse {
   message_text: string;
+  last_message: string;
+  last_message_timestamp: string;
   id: string;
   chat_id: string;
   sender_id: string;
@@ -234,59 +236,6 @@ export const apiSlice = createApi({
       providesTags: ["User"],
     }),
 
-    // Google OAuth endpoints
-    initiateGoogleAuth: builder.mutation<{ authUrl: string }, void>({
-      query: () => ({
-        url: "/api/oauth/auth/google",
-        method: "GET",
-      }),
-      transformResponse: (response: unknown) => {
-        console.log("Google OAuth API response:", response);
-
-        // Handle different response formats
-        if (typeof response === "string") {
-          // If it's a direct URL string
-          if (response.startsWith("http")) {
-            return { authUrl: response };
-          }
-          // If it's HTML (ngrok warning or error page)
-          if (response.includes("<!DOCTYPE html>")) {
-            throw new Error(
-              "Received HTML response instead of OAuth URL. Please check the API endpoint."
-            );
-          }
-          // If it's a plain string that might be a URL
-          return { authUrl: response };
-        }
-
-        // Handle JSON responses
-        if (response && typeof response === "object") {
-          if ("authUrl" in response) {
-            return response as { authUrl: string };
-          }
-          if ("url" in response) {
-            return { authUrl: (response as { url: string }).url };
-          }
-          if ("redirect_url" in response) {
-            return {
-              authUrl: (response as { redirect_url: string }).redirect_url,
-            };
-          }
-        }
-
-        // Fallback
-        return { authUrl: String(response) };
-      },
-    }),
-
-    handleGoogleCallback: builder.mutation<LoginResponse, { code: string }>({
-      query: (data) => ({
-        url: "/api/oauth/auth/google/callback",
-        method: "POST",
-        body: data,
-      }),
-    }),
-
     // Plan endpoints
     getPlans: builder.query<Plan[], void>({
       query: () => "/api/plans/",
@@ -333,6 +282,8 @@ export const apiSlice = createApi({
 
     // chat endpoints
 
+    // to continue conversation 
+
     sendMessage: builder.mutation<ChatResponse, { message_text: string }>({
       query: (message) => ({
         url: '/api/chats/',
@@ -341,14 +292,25 @@ export const apiSlice = createApi({
       }),
     }),
 
-    getRecentChats: builder.query<ChatResponse[], void>({
-      query: () => '/api/chats/',
+    // to get a conversation 
+
+    getParicularChats: builder.query<ChatResponse[], string>({
+      query: (chat_id) => `/api/chats/${chat_id}`,
+      providesTags: ['Chat'],
+    }),
+    getAllChats: builder.query<ChatResponse[], void>({
+      query: () => `/api/chats/`,
       providesTags: ['Chat'],
     }),
 
-    getChatMessages: builder.query<ChatResponse[], string>({
-      query: (chatId) => `/api/chats/${chatId}/messages`,
-      providesTags: (result, error, chatId) => [{ type: 'Chat', id: chatId }],
+    // to end a conversation 
+
+     endConversation: builder.mutation<null, void>({
+      query: () => ({
+        url: "/api/chats/new", // Endpoint to end and start a new conversation
+        method: "POST", // Assuming it is a POST request, though no body is required
+        body: {},
+      }),
     }),
   }),
 });
@@ -363,9 +325,6 @@ export const {
   useVerifyForgotPasswordCodeMutation,
   useResetPasswordMutation,
   useGetUserProfileQuery,
-  // Google OAuth hooks
-  useInitiateGoogleAuthMutation,
-  useHandleGoogleCallbackMutation,
   // Plan hooks
   useGetPlansQuery,
   useGetRecentPlansQuery,
@@ -375,6 +334,7 @@ export const {
   useDeletePlanMutation,
   // Chat Hooks
   useSendMessageMutation,
-  useGetRecentChatsQuery,
-  useGetChatMessagesQuery,
+  useGetParicularChatsQuery,
+  useGetAllChatsQuery,
+  useEndConversationMutation,
 } = apiSlice;

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSignUpMutation, useInitiateGoogleAuthMutation } from "@/store/features/ApiSlice";
+import { useSignUpMutation } from "@/store/features/ApiSlice";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,6 @@ export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [signUp, { isLoading, error }] = useSignUpMutation();
-  const [initiateGoogleAuth, { isLoading: isGoogleLoading }] = useInitiateGoogleAuthMutation();
 
   const form = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
@@ -82,92 +81,92 @@ export function SignUpForm() {
     }
   };
 
-      const handleGoogleSignUp = async () => {
-      try {
-        console.log("Initiating Google OAuth for signup...");
+    //   const handleGoogleSignUp = async () => {
+    //   try {
+    //     console.log("Initiating Google OAuth for signup...");
         
-        // Show loading popup
-        const loadingPopup = window.open('', '_blank', 'width=400,height=300,scrollbars=yes,resizable=yes');
-        if (loadingPopup) {
-          loadingPopup.document.write(`
-            <html>
-              <head>
-                <title>Google OAuth</title>
-                <style>
-                  body { 
-                    font-family: Arial, sans-serif; 
-                    display: flex; 
-                    flex-direction: column; 
-                    align-items: center; 
-                    justify-content: center; 
-                    height: 100vh; 
-                    margin: 0; 
-                    background: #f5f5f5;
-                  }
-                  .spinner { 
-                    border: 4px solid #f3f3f3; 
-                    border-top: 4px solid #3498db; 
-                    border-radius: 50%; 
-                    width: 40px; 
-                    height: 40px; 
-                    animation: spin 1s linear infinite; 
-                    margin-bottom: 20px;
-                  }
-                  @keyframes spin { 
-                    0% { transform: rotate(0deg); } 
-                    100% { transform: rotate(360deg); } 
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="spinner"></div>
-                <h3>Connecting to Google...</h3>
-                <p>Please wait while we redirect you to Google's authorization page.</p>
-              </body>
-            </html>
-          `);
-        }
+    //     // Show loading popup
+    //     const loadingPopup = window.open('', '_blank', 'width=400,height=300,scrollbars=yes,resizable=yes');
+    //     if (loadingPopup) {
+    //       loadingPopup.document.write(`
+    //         <html>
+    //           <head>
+    //             <title>Google OAuth</title>
+    //             <style>
+    //               body { 
+    //                 font-family: Arial, sans-serif; 
+    //                 display: flex; 
+    //                 flex-direction: column; 
+    //                 align-items: center; 
+    //                 justify-content: center; 
+    //                 height: 100vh; 
+    //                 margin: 0; 
+    //                 background: #f5f5f5;
+    //               }
+    //               .spinner { 
+    //                 border: 4px solid #f3f3f3; 
+    //                 border-top: 4px solid #3498db; 
+    //                 border-radius: 50%; 
+    //                 width: 40px; 
+    //                 height: 40px; 
+    //                 animation: spin 1s linear infinite; 
+    //                 margin-bottom: 20px;
+    //               }
+    //               @keyframes spin { 
+    //                 0% { transform: rotate(0deg); } 
+    //                 100% { transform: rotate(360deg); } 
+    //               }
+    //             </style>
+    //           </head>
+    //           <body>
+    //             <div class="spinner"></div>
+    //             <h3>Connecting to Google...</h3>
+    //             <p>Please wait while we redirect you to Google's authorization page.</p>
+    //           </body>
+    //         </html>
+    //       `);
+    //     }
 
-        // Call the Google OAuth API
-        const result = await initiateGoogleAuth().unwrap();
-        console.log("Google auth result:", result);
+    //     // Call the Google OAuth API
+    //     const result = await initiateGoogleAuth().unwrap();
+    //     console.log("Google auth result:", result);
 
-        if (!result.authUrl) {
-          console.error("No auth URL received from API");
-          if (loadingPopup) loadingPopup.close();
-          alert("Google signup failed: No authorization URL received.");
-          return;
-        }
+    //     if (!result.authUrl) {
+    //       console.error("No auth URL received from API");
+    //       if (loadingPopup) loadingPopup.close();
+    //       alert("Google signup failed: No authorization URL received.");
+    //       return;
+    //     }
 
-        console.log("Redirecting to Google OAuth URL:", result.authUrl);
+    //     console.log("Redirecting to Google OAuth URL:", result.authUrl);
         
-        // Close the loading popup and redirect to Google OAuth URL
-        if (loadingPopup) {
-          loadingPopup.location.href = result.authUrl;
-        } else {
-          // Fallback: redirect in the same window
-          window.location.href = result.authUrl;
-        }
+    //     // Close the loading popup and redirect to Google OAuth URL
+    //     if (loadingPopup) {
+    //       loadingPopup.location.href = result.authUrl;
+    //     } else {
+    //       // Fallback: redirect in the same window
+    //       window.location.href = result.authUrl;
+    //     }
         
-      } catch (error) {
-        console.error("Google signup error:", error);
+    //   } catch (error) {
+    //     console.error("Google signup error:", error);
 
-        // More detailed error handling
-        if (error && typeof error === 'object' && 'data' in error) {
-          const errorData = (error as { data?: { message?: string } }).data;
-          alert(`Google signup failed: ${errorData?.message || 'Unknown error'}`);
-        } else if (error && typeof error === 'object' && 'error' in error) {
-          const errorMessage = (error as { error?: string }).error;
-          if (errorMessage?.includes('HTML response')) {
-            alert("Google OAuth is not available at the moment. Please try again later.");
-          } else {
-            alert(`Google signup failed: ${errorMessage || 'Unknown error'}`);
-          }
-        } else {
-          alert("Google signup failed. Please try again.");
-        }
-      }
-    };
+    //     // More detailed error handling
+    //     if (error && typeof error === 'object' && 'data' in error) {
+    //       const errorData = (error as { data?: { message?: string } }).data;
+    //       alert(`Google signup failed: ${errorData?.message || 'Unknown error'}`);
+    //     } else if (error && typeof error === 'object' && 'error' in error) {
+    //       const errorMessage = (error as { error?: string }).error;
+    //       if (errorMessage?.includes('HTML response')) {
+    //         alert("Google OAuth is not available at the moment. Please try again later.");
+    //       } else {
+    //         alert(`Google signup failed: ${errorMessage || 'Unknown error'}`);
+    //       }
+    //     } else {
+    //       alert("Google signup failed. Please try again.");
+    //     }
+    //   }
+    // };
 
   return (
     <Form {...form}>
@@ -310,7 +309,7 @@ export function SignUpForm() {
         </div>
 
         {/* Google Sign Up Button */}
-        <Button
+        {/* <Button
           type="button"
           onClick={handleGoogleSignUp}
           disabled={isGoogleLoading}
@@ -339,7 +338,7 @@ export function SignUpForm() {
             </svg>
           )}
           <span>{isGoogleLoading ? "Connecting..." : "Continue with Google"}</span>
-        </Button>
+        </Button> */}
       </form>
     </Form>
   );

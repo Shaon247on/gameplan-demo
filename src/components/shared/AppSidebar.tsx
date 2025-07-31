@@ -11,15 +11,29 @@ import { Calendar, Home, Inbox, Plus, MoreHorizontal, FileText, MessageSquare } 
 import Image from "next/image";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { useGetRecentPlansQuery, useGetRecentChatsQuery } from "@/store/features/ApiSlice";
-import { useDispatch } from "react-redux"; // Import dispatch
-import { setCurrentPlan, setCurrentChat } from "@/store/slices/chatSlice"; // Import actions
+import { useGetRecentPlansQuery } from "@/store/features/ApiSlice";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { setCurrentChat, setCurrentPlan } from "@/store/features/chatSlice";
+import { useDispatch } from "react-redux";
 
 export function AppSidebar() {
-  const dispatch = useDispatch(); // Use dispatch to update the state
-  const { data: recentPlans, isLoading: plansLoading, error: plansError } = useGetRecentPlansQuery();
-  const { data: recentChats, isLoading: chatsLoading, error: chatsError } = useGetRecentChatsQuery();
+  const dispatch = useDispatch();
 
+  const handlePlanClick = (planId: string) => {
+    // Update the store with the selected plan ID
+    dispatch(setCurrentPlan(planId));
+  };
+
+  const handleChatClick = (chatId: string) => {
+    // Update the store with the selected chat ID
+    dispatch(setCurrentChat(chatId));
+  };
   const items = [
     {
       title: "Calendar",
@@ -32,16 +46,6 @@ export function AppSidebar() {
       icon: Plus,
     },
   ];
-
-  const handlePlanClick = (planId: string) => {
-    dispatch(setCurrentPlan(planId));  // Set the current plan when clicked
-    // Optionally, you can fetch the related chat messages here
-  };
-
-  const handleChatClick = (chatId: string) => {
-    dispatch(setCurrentChat(chatId));  // Set the current chat when clicked
-    // Optionally, you can fetch the related chat messages here
-  };
 
   return (
     <Sidebar>
@@ -76,97 +80,16 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroupContent>
         
-        {/* Recent Chats Section */}
-        <SidebarGroupContent>
-          <div className="flex items-center justify-between mb-2">
-            <SidebarGroupLabel>Recent plans</SidebarGroupLabel>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-[100px] h-6 text-xs bg-gray-100 border-none">
-                <SelectValue placeholder="All Plans" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Plans</SelectItem>
-                <SelectItem value="recent">Recent</SelectItem>
-                <SelectItem value="favorites">Favorites</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <SidebarMenu>
-            {chatsLoading ? (
-              <div className="text-sm text-gray-500 px-5 py-2">Loading chats...</div>
-            ) : chatsError ? (
-              <div className="text-sm text-red-500 px-5 py-2">Error loading chats</div>
-            ) : recentChats && recentChats.length > 0 ? (
-              recentChats.map((chat) => (
-                <SidebarMenuItem key={chat.id}>
-                  <SidebarMenuButton asChild className="border-none">
-                    <Link
-                      href={`/dashboard?chatId=${chat.chat_id}`}
-                      className="flex items-center justify-between border-2 pl-5 mb-2 py-2 hover:bg-gray-50"
-                      onClick={() => handleChatClick(chat.chat_id)} // Handle chat click
-                    >
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700 truncate max-w-32">
-                          Last chat
-                        </span>
-                      </div>
-                      <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))
-            ) : (
-              <div className="text-sm text-gray-500 px-5 py-2">No recent chats</div>
-            )}
-          </SidebarMenu>
-        </SidebarGroupContent>
+        <div>
+          hello
+        </div>
 
-        {/* Recent Plans Section */}
-        <SidebarGroupContent>
-          <div className="flex items-center justify-between mb-2">
-            <SidebarGroupLabel>Recent plans</SidebarGroupLabel>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-[100px] h-6 text-xs bg-gray-100 border-none">
-                <SelectValue placeholder="All Plans" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Plans</SelectItem>
-                <SelectItem value="recent">Recent</SelectItem>
-                <SelectItem value="favorites">Favorites</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <SidebarMenu>
-            {plansLoading ? (
-              <div className="text-sm text-gray-500 px-5 py-2">Loading plans...</div>
-            ) : plansError ? (
-              <div className="text-sm text-red-500 px-5 py-2">Error loading plans</div>
-            ) : recentPlans && recentPlans.length > 0 ? (
-              recentPlans.map((plan) => (
-                <SidebarMenuItem key={plan.id}>
-                  <SidebarMenuButton asChild className="border-none">
-                    <Link
-                      href={`/dashboard?planId=${plan.id}`}
-                      className="flex items-center justify-between border-2 pl-5 mb-2 py-2 hover:bg-gray-50"
-                      onClick={() => handlePlanClick(plan.id)} // Handle plan click
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700 truncate max-w-32">
-                          {plan.title || "Last plan"}
-                        </span>
-                      </div>
-                      <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))
-            ) : (
-              <div className="text-sm text-gray-500 px-5 py-2">No recent plans</div>
-            )}
-          </SidebarMenu>
-        </SidebarGroupContent>
+        {/* Upgrade To Pro Button */}
+        <div className="mt-auto p-4">
+          <Button variant="primary" className="w-full">
+            Upgrade To Pro
+          </Button>
+        </div>
       </SidebarGroup>
     </Sidebar>
   );

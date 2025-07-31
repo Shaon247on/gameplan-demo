@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import StoreProvider from "@/store/StoreProvider";
-import Navbar from "@/components/shared/Navbar";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const montserrat = Montserrat({
@@ -25,13 +24,11 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${montserrat.variable} font-montserrat antialiased`}>
         <div>
-          <StoreProvider>
-            <AuthProvider>
-              <main>
-                {children}
-              </main>
-            </AuthProvider>
-          </StoreProvider>
+            <StoreProvider>
+              <AuthProvider>
+                <main>{children}</main>
+              </AuthProvider>
+            </StoreProvider>
         </div>
       </body>
     </html>
