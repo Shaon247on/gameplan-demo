@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setActiveMessages } from "@/store/features/chatSlice";
 import useAccessToken from "@/hooks/useAccessToken";
 import { RootState } from "@/store/store";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 interface SidebarItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -24,20 +25,20 @@ interface SidebarItem {
 }
 
 interface LastMessage {
-  message_text: string;  // The content of the last message
-  id: string;  // The unique identifier for the message
-  chat_id: string;  // The ID of the chat the message belongs to
-  sender_id: string;  // The ID of the sender of the message
-  receiver_id: string;  // The ID of the receiver of the message
-  timestamp: string;  // The timestamp when the message was sent (ISO 8601 string)
+  message_text: string; // The content of the last message
+  id: string; // The unique identifier for the message
+  chat_id: string; // The ID of the chat the message belongs to
+  sender_id: string; // The ID of the sender of the message
+  receiver_id: string; // The ID of the receiver of the message
+  timestamp: string; // The timestamp when the message was sent (ISO 8601 string)
 }
 
 // Define the type for a chat
 interface Chat {
-  id: string;  // Unique identifier for the chat
-  participants: string[];  // Array of user IDs participating in the chat
-  last_message: LastMessage;  // The last message in the chat
-  updated_at: string;  // The timestamp when the chat was last updated (ISO 8601 string)
+  id: string; // Unique identifier for the chat
+  participants: string[]; // Array of user IDs participating in the chat
+  last_message: LastMessage; // The last message in the chat
+  updated_at: string; // The timestamp when the chat was last updated (ISO 8601 string)
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -53,9 +54,13 @@ export default function Sidebar() {
   const { isCollapsed, setIsCollapsed, animationDuration } = useSidebar();
   const { data: allChats, isLoading: isChatLoading } = useGetAllChatsQuery();
   const [endConversation] = useEndConversationMutation();
-  const {activeMessages} = useSelector((state: RootState)=> state.chat)
-  
-   const { data: chatMessages, error, isLoading } = useGetParicularChatsQuery(chatId, {
+  const { activeMessages } = useSelector((state: RootState) => state.chat);
+
+  const {
+    data: chatMessages,
+    error,
+    isLoading,
+  } = useGetParicularChatsQuery(chatId, {
     skip: chatId === "", // Skip the query when chatId is an empty string
   });
 
@@ -95,30 +100,37 @@ export default function Sidebar() {
     if (chatMessages && chatMessages.length > 0) {
       // Dispatch the chat messages to Redux
       dispatch(setActiveMessages(chatMessages));
-      console.log("possitive activeMessage:",activeMessages)
-    }else{
-      dispatch(setActiveMessages([]))
-      console.log("Negative activeMessage:", activeMessages)
+      console.log("possitive activeMessage:", activeMessages);
+    } else {
+      dispatch(setActiveMessages([]));
+      console.log("Negative activeMessage:", activeMessages);
     }
   }, [chatMessages, dispatch]);
 
   useEffect(() => {
     // Function to filter, sort, and slice the chats
     const processChats = () => {
-      const filteredAndSortedChats = (allChats ?? [])
-        .filter((item) => item.last_message !== null) // Filter out chats without valid last_message
-        .sort((a, b) => {
-          if (a.last_message && b.last_message) {
-            const dateA = new Date(a.last_message.timestamp);
-            const dateB = new Date(b.last_message.timestamp);
-            return dateB.getTime() - dateA.getTime(); // Sort by descending timestamp
-          }
-          return 0;
-        })
-        .slice(0, 3); // Only take the first 3 chats
+      if (allChats === undefined) {
+        setSortedChats([]);
+      } else {
+        const filteredAndSortedChats =
+          allChats?.length > 0
+            ? allChats
+                .filter((item) => item.last_message !== null) // Filter out chats without valid last_message
+                .sort((a, b) => {
+                  if (a.last_message && b.last_message) {
+                    const dateA = new Date(a.last_message.timestamp);
+                    const dateB = new Date(b.last_message.timestamp);
+                    return dateB.getTime() - dateA.getTime(); // Sort by descending timestamp
+                  }
+                  return 0;
+                })
+                .slice(0, 3)
+            : []; // Only take the first 3 chats
 
-      // Update the state with filtered and sorted chats
-      setSortedChats(filteredAndSortedChats);
+        // Update the state with filtered and sorted chats
+        setSortedChats(filteredAndSortedChats);
+      }
     };
 
     // Process the chats whenever `allChats` changes
@@ -253,9 +265,27 @@ export default function Sidebar() {
             <>
               <span>Loading...</span>
             </>
-          ) : (
-            <div className="flex flex-col gap-5 items-center justify-center">
-              {sortedChats.map((item, index) => (
+          ) : sortedChats.length > 0 ? (
+            <>
+              <div className="flex flex-col gap-5 items-center justify-center">
+                <div className="flex items-center gap-3">
+                  <h5 className="text-xl font-medium text-center">
+                    Recent Chats
+                  </h5>
+                  <div>
+                    <Select>
+                      <SelectTrigger className="max-w-[97px]">
+                        <SelectValue placeholder="All Chats" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="light">All Chats</SelectItem>
+                        <SelectItem value="dark">Pined Chats</SelectItem>
+                        <SelectItem value="system">Saved Chats</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {sortedChats.map((item, index) => (
                   <div key={index}>
                     {item.last_message ? (
                       <Button
@@ -278,6 +308,11 @@ export default function Sidebar() {
                     )}
                   </div>
                 ))}
+              </div>
+            </>
+          ) : (
+            <div className="w-full text-center">
+              <p className="text-lg text-[#020202]">No Recent Chats</p>
             </div>
           )}
         </div>

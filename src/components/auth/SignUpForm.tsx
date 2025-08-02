@@ -21,6 +21,13 @@ import {
 import { signUpSchema, type SignUpFormData } from "@/lib/schemas/auth";
 
 export function SignUpForm() {
+  const setCookie = (name: string, value: string, days: number = 7) => {
+    if (typeof window === "undefined") return;
+
+    const expires = new Date();
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+  };
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [signUp, { isLoading, error }] = useSignUpMutation();
@@ -36,14 +43,14 @@ export function SignUpForm() {
     },
   });
 
-  console.log("hello error", form.formState.errors)
+  console.log("hello error", form.formState.errors);
 
   const router = useRouter();
 
   const onSubmit = async (data: SignUpFormData) => {
     try {
       console.log("Sign up data:", data);
-      
+
       // Transform form data to match API requirements
       const signUpData = {
         username: data.username,
@@ -54,13 +61,19 @@ export function SignUpForm() {
       };
 
       const result = await signUp(signUpData).unwrap();
-      
+
+      console.log("signup response:",result)
+
       console.log("API Response:", result);
-      
+
       // Check if the response indicates success (either by success field or message)
-      if (result.success || result.message?.includes("successfully") || result.status === "success") {
+      if (
+        result.success ||
+        result.message?.includes("successfully") ||
+        result.status === "success"
+      ) {
         console.log("Signup successful:", result);
-        // After successful signup, redirect to pricing page
+        // After successful signup, redirect to pricing page        
         router.push("/pricing");
       } else {
         console.error("Signup failed:", result.message);
@@ -69,11 +82,11 @@ export function SignUpForm() {
     } catch (error) {
       console.error("Signup error:", error);
       // If the error contains a success message, treat it as success
-      if (error && typeof error === 'object' && 'data' in error) {
+      if (error && typeof error === "object" && "data" in error) {
         const errorData = (error as { data?: { message?: string } }).data;
         if (errorData?.message?.includes("successfully")) {
           console.log("Signup successful despite error wrapper:", errorData);
-          router.push("/pricing");
+          router.push("/login");
           return;
         }
       }
@@ -81,92 +94,92 @@ export function SignUpForm() {
     }
   };
 
-    //   const handleGoogleSignUp = async () => {
-    //   try {
-    //     console.log("Initiating Google OAuth for signup...");
-        
-    //     // Show loading popup
-    //     const loadingPopup = window.open('', '_blank', 'width=400,height=300,scrollbars=yes,resizable=yes');
-    //     if (loadingPopup) {
-    //       loadingPopup.document.write(`
-    //         <html>
-    //           <head>
-    //             <title>Google OAuth</title>
-    //             <style>
-    //               body { 
-    //                 font-family: Arial, sans-serif; 
-    //                 display: flex; 
-    //                 flex-direction: column; 
-    //                 align-items: center; 
-    //                 justify-content: center; 
-    //                 height: 100vh; 
-    //                 margin: 0; 
-    //                 background: #f5f5f5;
-    //               }
-    //               .spinner { 
-    //                 border: 4px solid #f3f3f3; 
-    //                 border-top: 4px solid #3498db; 
-    //                 border-radius: 50%; 
-    //                 width: 40px; 
-    //                 height: 40px; 
-    //                 animation: spin 1s linear infinite; 
-    //                 margin-bottom: 20px;
-    //               }
-    //               @keyframes spin { 
-    //                 0% { transform: rotate(0deg); } 
-    //                 100% { transform: rotate(360deg); } 
-    //               }
-    //             </style>
-    //           </head>
-    //           <body>
-    //             <div class="spinner"></div>
-    //             <h3>Connecting to Google...</h3>
-    //             <p>Please wait while we redirect you to Google's authorization page.</p>
-    //           </body>
-    //         </html>
-    //       `);
-    //     }
+  //   const handleGoogleSignUp = async () => {
+  //   try {
+  //     console.log("Initiating Google OAuth for signup...");
 
-    //     // Call the Google OAuth API
-    //     const result = await initiateGoogleAuth().unwrap();
-    //     console.log("Google auth result:", result);
+  //     // Show loading popup
+  //     const loadingPopup = window.open('', '_blank', 'width=400,height=300,scrollbars=yes,resizable=yes');
+  //     if (loadingPopup) {
+  //       loadingPopup.document.write(`
+  //         <html>
+  //           <head>
+  //             <title>Google OAuth</title>
+  //             <style>
+  //               body {
+  //                 font-family: Arial, sans-serif;
+  //                 display: flex;
+  //                 flex-direction: column;
+  //                 align-items: center;
+  //                 justify-content: center;
+  //                 height: 100vh;
+  //                 margin: 0;
+  //                 background: #f5f5f5;
+  //               }
+  //               .spinner {
+  //                 border: 4px solid #f3f3f3;
+  //                 border-top: 4px solid #3498db;
+  //                 border-radius: 50%;
+  //                 width: 40px;
+  //                 height: 40px;
+  //                 animation: spin 1s linear infinite;
+  //                 margin-bottom: 20px;
+  //               }
+  //               @keyframes spin {
+  //                 0% { transform: rotate(0deg); }
+  //                 100% { transform: rotate(360deg); }
+  //               }
+  //             </style>
+  //           </head>
+  //           <body>
+  //             <div class="spinner"></div>
+  //             <h3>Connecting to Google...</h3>
+  //             <p>Please wait while we redirect you to Google's authorization page.</p>
+  //           </body>
+  //         </html>
+  //       `);
+  //     }
 
-    //     if (!result.authUrl) {
-    //       console.error("No auth URL received from API");
-    //       if (loadingPopup) loadingPopup.close();
-    //       alert("Google signup failed: No authorization URL received.");
-    //       return;
-    //     }
+  //     // Call the Google OAuth API
+  //     const result = await initiateGoogleAuth().unwrap();
+  //     console.log("Google auth result:", result);
 
-    //     console.log("Redirecting to Google OAuth URL:", result.authUrl);
-        
-    //     // Close the loading popup and redirect to Google OAuth URL
-    //     if (loadingPopup) {
-    //       loadingPopup.location.href = result.authUrl;
-    //     } else {
-    //       // Fallback: redirect in the same window
-    //       window.location.href = result.authUrl;
-    //     }
-        
-    //   } catch (error) {
-    //     console.error("Google signup error:", error);
+  //     if (!result.authUrl) {
+  //       console.error("No auth URL received from API");
+  //       if (loadingPopup) loadingPopup.close();
+  //       alert("Google signup failed: No authorization URL received.");
+  //       return;
+  //     }
 
-    //     // More detailed error handling
-    //     if (error && typeof error === 'object' && 'data' in error) {
-    //       const errorData = (error as { data?: { message?: string } }).data;
-    //       alert(`Google signup failed: ${errorData?.message || 'Unknown error'}`);
-    //     } else if (error && typeof error === 'object' && 'error' in error) {
-    //       const errorMessage = (error as { error?: string }).error;
-    //       if (errorMessage?.includes('HTML response')) {
-    //         alert("Google OAuth is not available at the moment. Please try again later.");
-    //       } else {
-    //         alert(`Google signup failed: ${errorMessage || 'Unknown error'}`);
-    //       }
-    //     } else {
-    //       alert("Google signup failed. Please try again.");
-    //     }
-    //   }
-    // };
+  //     console.log("Redirecting to Google OAuth URL:", result.authUrl);
+
+  //     // Close the loading popup and redirect to Google OAuth URL
+  //     if (loadingPopup) {
+  //       loadingPopup.location.href = result.authUrl;
+  //     } else {
+  //       // Fallback: redirect in the same window
+  //       window.location.href = result.authUrl;
+  //     }
+
+  //   } catch (error) {
+  //     console.error("Google signup error:", error);
+
+  //     // More detailed error handling
+  //     if (error && typeof error === 'object' && 'data' in error) {
+  //       const errorData = (error as { data?: { message?: string } }).data;
+  //       alert(`Google signup failed: ${errorData?.message || 'Unknown error'}`);
+  //     } else if (error && typeof error === 'object' && 'error' in error) {
+  //       const errorMessage = (error as { error?: string }).error;
+  //       if (errorMessage?.includes('HTML response')) {
+  //         alert("Google OAuth is not available at the moment. Please try again later.");
+  //       } else {
+  //         alert(`Google signup failed: ${errorMessage || 'Unknown error'}`);
+  //       }
+  //     } else {
+  //       alert("Google signup failed. Please try again.");
+  //     }
+  //   }
+  // };
 
   return (
     <Form {...form}>
@@ -295,7 +308,9 @@ export function SignUpForm() {
           className="w-full rounded-full h-[54px]"
           disabled={form.formState.isSubmitting || isLoading}
         >
-          {form.formState.isSubmitting || isLoading ? "SIGNING UP..." : "SIGN UP"}
+          {form.formState.isSubmitting || isLoading
+            ? "SIGNING UP..."
+            : "SIGN UP"}
         </Button>
 
         {/* Divider */}
@@ -304,7 +319,9 @@ export function SignUpForm() {
             <div className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            <span className="px-2 bg-white text-gray-500">
+              Or continue with
+            </span>
           </div>
         </div>
 

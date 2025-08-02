@@ -129,6 +129,32 @@ export interface ChatResponse {
   timestamp: string;
 }
 
+interface Class {
+  id: string;  // UUID
+  user_id?: string;  // UUID
+  title: string;
+  description: string;
+  schedule_info: string;
+  plan_ids?: string[]; // List of associated plan IDs
+  created_at?: string;  // ISO 8601 Timestamp
+  updated_at?: string;  // ISO 8601 Timestamp
+}
+
+// Request Type for creating or updating a class
+interface ClassRequest {
+  title: string;
+  description: string;
+  schedule_info: string;
+  plan_ids: string[];
+}
+
+// Error Type (for validation errors)
+interface ValidationError {
+  loc: [string, number];  // Path to the error
+  msg: string;  // Error message
+  type: string;  // Type of error
+}
+
 // Create the API slice
 export const apiSlice = createApi({
   reducerPath: "api",
@@ -165,7 +191,7 @@ export const apiSlice = createApi({
       return response.status < 500; // Don't treat 4xx as errors
     },
   }),
-  tagTypes: ["User", "Plan", "Chat"], // Define cache tags for invalidation
+  tagTypes: ["User", "Plan", "Chat", "Class"], // Define cache tags for invalidation
   endpoints: (builder) => ({
     // Auth endpoints
 
@@ -289,18 +315,33 @@ export const apiSlice = createApi({
         url: '/api/chats/',
         method: 'POST',
         body: message,
+        credentials: "include"
       }),
     }),
 
     // to get a conversation 
 
-    getParicularChats: builder.query<ChatResponse[], string>({
+    getParicularChats: builder.query<ChatResponse[], string | string[]>({
       query: (chat_id) => `/api/chats/${chat_id}`,
-      providesTags: ['Chat'],
     }),
     getAllChats: builder.query<ChatResponse[], void>({
       query: () => `/api/chats/`,
       providesTags: ['Chat'],
+    }),
+
+    getMultipleChats: builder.query({
+      async queryFn(chatIds, fetchWithBQ) {
+        try {
+          
+        } catch (error: any) {
+          return {
+            error: {
+              status: 'FETCH_ERROR',
+              data: error.message,
+            },
+          };
+        }
+      }
     }),
 
     // to end a conversation 
@@ -311,6 +352,64 @@ export const apiSlice = createApi({
         method: "POST", // Assuming it is a POST request, though no body is required
         body: {},
       }),
+    }),
+    // Get all classes
+    getClasses: builder.query<Class[], void>({
+      query: () => "/api/classes/",
+      providesTags: ["Class"], // Provides a cache tag for invalidation
+    }),
+
+    // Create a new class
+    createClass: builder.mutation<Class, ClassRequest>({
+      query: (newClass) => ({
+        url: "/api/classes/",
+        method: "POST",
+        body: newClass,
+      }),
+      invalidatesTags: ["Class"], // Invalidate class cache on mutation
+    }),
+
+    // Get class by ID
+    getClassById: builder.query<Class, string>({
+      query: (classId) => `/api/classes/${classId}`,
+      providesTags: (result, error, classId) => [{ type: "Class", id: classId }],
+    }),
+
+    // Update a class
+    updateClass: builder.mutation<Class, { classId: string; updatedClass: ClassRequest }>({
+      query: ({ classId, ...updatedClass }) => ({
+        url: `/api/classes/${classId}`,
+        method: "PUT",
+        body: updatedClass,
+      }),
+      invalidatesTags: (result, error, { classId }) => [{ type: "Class", id: classId }],
+    }),
+
+    // Delete a class
+    deleteClass: builder.mutation<void, string>({
+      query: (classId) => ({
+        url: `/api/classes/${classId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Class"], // Invalidate the class cache after deleting
+    }),
+
+    // Add a plan to a class
+    addPlanToClass: builder.mutation<Class, { classId: string; chatId: string }>({
+      query: ({ classId, chatId }) => ({
+        url: `/api/classes/${classId}/add-plan/${chatId}`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, { classId }) => [{ type: "Class", id: classId }],
+    }),
+
+    // Remove a plan from a class
+    removePlanFromClass: builder.mutation<Class, { classId: string; chatId: string }>({
+      query: ({ classId, chatId }) => ({
+        url: `/api/classes/${classId}/remove-plan/${chatId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { classId }) => [{ type: "Class", id: classId }],
     }),
   }),
 });
@@ -337,4 +436,12 @@ export const {
   useGetParicularChatsQuery,
   useGetAllChatsQuery,
   useEndConversationMutation,
+  // Classes Hooks
+  useGetClassesQuery,
+  useCreateClassMutation,
+  useGetClassByIdQuery,
+  useUpdateClassMutation,
+  useDeleteClassMutation,
+  useAddPlanToClassMutation,
+  useRemovePlanFromClassMutation,
 } = apiSlice;

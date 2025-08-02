@@ -286,7 +286,7 @@ export default function NewPlanPage() {
                 <motion.div
                   key={message.id}
                   className={`flex items-start space-x-3 ${
-                    message.sender_id === "user-id"
+                    message.sender_id === "user-id" || message.sender_id !== "00000000-0000-0000-0000-000000000001"
                       ? "justify-start"
                       : "justify-end"
                   }`}
