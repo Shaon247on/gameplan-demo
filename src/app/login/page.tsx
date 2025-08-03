@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
+  const [storage, setStorage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {

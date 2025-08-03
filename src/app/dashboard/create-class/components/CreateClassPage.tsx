@@ -29,6 +29,7 @@ import {
   useGetClassesQuery,
   useGetParicularChatsQuery,
   useGetAllChatsQuery,
+  useLazyGetMultiplePlansQuery,
 } from "@/store/features/ApiSlice"; // RTK Query hooks
 
 // Types for Class and Chat
@@ -57,6 +58,15 @@ export default function CreateClassPage() {
   const [fetchedProducts, setFetchedProducts] = useState<any[]>([]); // State to store fetched products
   const [productIdsToFetch, setProductIdsToFetch] = useState<string[]>([]);
   const [productsData, setProductsData] = useState<any[]>([]);
+  const [activePackage, setActivePackage] = useState<string | null>(null);
+  const [fetchedData, setFetchedData] = useState<{
+    packageName: string;
+    planIds: string[];
+    error?: string;
+    data?: any;
+    timestamp: string;
+    status: string;
+  }[]>([]);
 
   const { data: classes = [], isLoading: classesLoading } =
     useGetClassesQuery(); // Default classes to an empty array if undefined
@@ -64,15 +74,12 @@ export default function CreateClassPage() {
   const [createClass] = useCreateClassMutation();
   const [updateClass] = useUpdateClassMutation();
   const [deleteClass] = useDeleteClassMutation();
-    const { data: products, isLoading, error } = useGetParicularChatsQuery(productIdsToFetch, {
-    skip: !productIdsToFetch.length,
-  });
 
+  const [fetchMultiplePlans, { isLoading }] = useLazyGetMultiplePlansQuery();
 
-  console.log("Fetched chat:",fetchedProducts)
+  // console.log("chats in class form:", chats)
 
-;
-
+  console.log("Fetched chat:", fetchedProducts);
 
   const {
     control,
@@ -129,6 +136,40 @@ export default function CreateClassPage() {
   const handleBackToEmpty = () => {
     setCurrentView("empty");
     setSelectedClass(null);
+  };
+
+  const handleFetchPlans = async (planIds: string[], packageName: string, classItem: any) => {
+    setActivePackage(packageName); // Track which package is being fetched
+
+    try {
+      // 1. Fetch data using RTK Query
+      const result = await fetchMultiplePlans(planIds).unwrap();
+
+      // 2. Update internal state with SUCCESS data
+      setFetchedData({
+        packageName, // Which package was clicked
+        planIds, // Array of plan IDs that were fetched
+        data: result, // The actual API response data
+        timestamp: new Date().toLocaleTimeString(), // When it happened
+        status: "success",
+      });
+       setSelectedClass(classItem);
+    setProductIdsToFetch(planIds);
+    setCurrentView("detail");
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+
+      // 3. Update internal state with ERROR data
+      setFetchedData({
+        packageName,
+        planIds,
+        error: error.message || "Failed to fetch plans", // Error message instead of data
+        timestamp: new Date().toLocaleTimeString(),
+        status: "error",
+      });
+    } finally {
+      setActivePackage(null); // Clear active package
+    }
   };
 
   // Empty State View
@@ -233,7 +274,7 @@ export default function CreateClassPage() {
                           <SelectValue placeholder="Select Chats" />
                         </SelectTrigger>
                         <SelectContent className="max-w-40">
-                          {sortedChats.map((chat) => (
+                          {chats?.map((chat) => (
                             <SelectItem
                               key={chat.id}
                               value={chat.last_message?.chat_id}
@@ -275,7 +316,7 @@ export default function CreateClassPage() {
             classes.map((classItem) => (
               <Button
                 key={classItem.id}
-                onClick={() => handleClassSelect(classItem)}
+                onClick={() => handleFetchPlans(classItem.plan_ids || [], classItem.title, classItem)}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-6 text-left rounded-xl shadow-md"
               >
                 <div className="flex-1">
@@ -303,10 +344,10 @@ export default function CreateClassPage() {
           </Card>
 
           {/* Display chats */}
-          {fetchedProducts.length === 0 ? (
+          {fetchedData?.length === 0 ? (
             <div>No saved chats available for this class.</div>
           ) : (
-            fetchedProducts.map((chat, index) => (
+            fetchedData?.map((chat, index) => (
               <Card key={index} className="my-4 border-gray-200 shadow-sm">
                 <CardContent>
                   <h4 className="text-md font-medium">{chat.message_text}</h4>

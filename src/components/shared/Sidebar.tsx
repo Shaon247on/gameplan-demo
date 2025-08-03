@@ -52,7 +52,7 @@ export default function Sidebar() {
   const [chatId, setChatId] = useState<string>("");
   const [sortedChats, setSortedChats] = useState<Chat[]>([]);
   const { isCollapsed, setIsCollapsed, animationDuration } = useSidebar();
-  const { data: allChats, isLoading: isChatLoading } = useGetAllChatsQuery();
+  const { data: allChats = [], isLoading: isChatLoading } = useGetAllChatsQuery();
   const [endConversation] = useEndConversationMutation();
   const { activeMessages } = useSelector((state: RootState) => state.chat);
 
@@ -107,35 +107,35 @@ export default function Sidebar() {
     }
   }, [chatMessages, dispatch]);
 
-  useEffect(() => {
-    // Function to filter, sort, and slice the chats
-    const processChats = () => {
-      if (allChats === undefined) {
-        setSortedChats([]);
-      } else {
-        const filteredAndSortedChats =
-          allChats?.length > 0
-            ? allChats
-                .filter((item) => item.last_message !== null) // Filter out chats without valid last_message
-                .sort((a, b) => {
-                  if (a.last_message && b.last_message) {
-                    const dateA = new Date(a.last_message.timestamp);
-                    const dateB = new Date(b.last_message.timestamp);
-                    return dateB.getTime() - dateA.getTime(); // Sort by descending timestamp
-                  }
-                  return 0;
-                })
-                .slice(0, 3)
-            : []; // Only take the first 3 chats
+  // useEffect(() => {
+  //   // Function to filter, sort, and slice the chats
+  //   const processChats = () => {
+  //     if (allChats === undefined) {
+  //       setSortedChats([]);
+  //     } else {
+  //       const filteredAndSortedChats =
+  //         allChats?.length > 0
+  //           ? allChats
+  //               .filter((item) => item.last_message !== null) // Filter out chats without valid last_message
+  //               .sort((a, b) => {
+  //                 if (a.last_message && b.last_message) {
+  //                   const dateA = new Date(a.last_message.timestamp);
+  //                   const dateB = new Date(b.last_message.timestamp);
+  //                   return dateB.getTime() - dateA.getTime(); // Sort by descending timestamp
+  //                 }
+  //                 return 0;
+  //               })
+  //               .slice(0, 3)
+  //           : []; // Only take the first 3 chats
 
-        // Update the state with filtered and sorted chats
-        setSortedChats(filteredAndSortedChats);
-      }
-    };
+  //       // Update the state with filtered and sorted chats
+  //       setSortedChats(filteredAndSortedChats);
+  //     }
+  //   };
 
-    // Process the chats whenever `allChats` changes
-    processChats();
-  }, [allChats]);
+  //   // Process the chats whenever `allChats` changes
+  //   processChats();
+  // }, [allChats]);
 
   const handleParticularChats = (id: string) => {
     setChatId(id); // Update the chatId when a chat button is clicked
@@ -265,7 +265,7 @@ export default function Sidebar() {
             <>
               <span>Loading...</span>
             </>
-          ) : sortedChats.length > 0 ? (
+          ) : allChats?.length > 0 ? (
             <>
               <div className="flex flex-col gap-5 items-center justify-center">
                 <div className="flex items-center gap-3">
@@ -285,7 +285,7 @@ export default function Sidebar() {
                     </Select>
                   </div>
                 </div>
-                {sortedChats.map((item, index) => (
+                {allChats.map((item, index) => (
                   <div key={index}>
                     {item.last_message ? (
                       <Button
