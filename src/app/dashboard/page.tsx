@@ -14,6 +14,7 @@ import useAccessToken from "@/hooks/useAccessToken";
 import { useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store/store";
 import { useDispatch } from "react-redux";
+import { addMessageToActiveChat } from "@/store/features/chatSlice";
 
 interface SuggestionButton {
   id: number;
@@ -21,12 +22,9 @@ interface SuggestionButton {
 }
 
 export interface ChatMessage {
-  message_text: string;
-  id: string;
-  chat_id: string;
-  sender_id: string;
-  receiver_id: string;
-  timestamp: string;
+  message?: string;
+  response?: string;
+  plan_id?: number | null;
 }
 
 const suggestionButtons: SuggestionButton[] = [
@@ -37,14 +35,15 @@ const suggestionButtons: SuggestionButton[] = [
 ];
 
 export default function NewPlanPage() {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const { activeMessages } = useAppSelector((state: RootState) => state.chat);
+  const planId = useAppSelector((state) => state.chat.planId);
 
-  console.log("from the chatSection:",activeMessages)
+  console.log("from the chatSection:", activeMessages);
 
   console.log("active message:", activeMessages);
 
@@ -85,84 +84,35 @@ export default function NewPlanPage() {
 
     if (inputText.trim()) {
       const userMessage: ChatMessage = {
-        id: Date.now().toString(),
-        message_text: inputText,
-        chat_id: currentChatId || "", // Use current chat_id
-        sender_id: "user-id", // Replace with actual user ID
-        receiver_id: "assistant-id", // Replace with actual assistant ID
-        timestamp: new Date().toISOString(),
+        plan_id: planId,
+        message: inputText,
       };
 
-      setMessages((prev) => [...prev, userMessage]);
-      const currentInputText = inputText;
-      setInputText("");
+      dispatch(addMessageToActiveChat(userMessage));
 
       try {
-        const aiResponse = await sendMessage({
-          message_text: currentInputText,
-        }).unwrap();
+        const aiResponse = await sendMessage(userMessage).unwrap();
 
         // console.log(aiMessage, "AI response");
-        setMessages((prev) => [...prev, aiResponse]);
-        setCurrentChatId(aiResponse.chat_id);
+        if (aiResponse) {
+          dispatch(
+            addMessageToActiveChat({
+              plan_id: aiResponse.plan_id,
+              response: aiResponse.response,
+            })
+          );
+        }
       } catch (error) {
         console.error("Error getting AI response:", error);
         // Fallback response if there's an error
-        const fallbackMessage: ChatMessage = {
-          id: Date.now().toString(),
-          message_text: "Sorry we are failed to get AI response.",
-          chat_id: currentChatId || "",
-          sender_id: "assistant-id", // Replace with actual assistant ID
-          receiver_id: "user-id", // Replace with actual user ID
-          timestamp: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, fallbackMessage]);
+        dispatch(
+          addMessageToActiveChat({
+            response: "Sorry we are failed to get AI response.",
+          })
+        );
       }
     }
   };
-
-  // const handleCreatePlan = async () => {
-  //   if (messages.length === 0) return;
-
-  //   try {
-  //     // Extract the last user message as the plan title
-  //     const lastUserMessage =
-  //       messages.filter((msg) => msg.isUser).pop()?.text || "New Plan";
-
-  //     const planData = {
-  //       title: lastUserMessage,
-  //       description: messages
-  //         .map((msg) => `${msg.isUser ? "User" : "AI"}: ${msg.text}`)
-  //         .join("\n"),
-  //       start_date: new Date().toISOString(),
-  //       end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-  //     };
-
-  //     await createPlan(planData).unwrap();
-
-  //     // Add a success message
-  //     setMessages((prev) => [
-  //       ...prev,
-  //       {
-  //         id: Date.now() + 2,
-  //         text: "✅ Plan created successfully! You can find it in your recent plans.",
-  //         isUser: false,
-  //         timestamp: new Date(),
-  //       },
-  //     ]);
-  //   } catch (error) {
-  //     console.error("Error creating plan:", error);
-  //     setMessages((prev) => [
-  //       ...prev,
-  //       {
-  //         id: Date.now() + 2,
-  //         text: "❌ Failed to create plan. Please try again.",
-  //         isUser: false,
-  //         timestamp: new Date(),
-  //       },
-  //     ]);
-  //   }
-  // };
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputText(suggestion);
@@ -172,16 +122,19 @@ export default function NewPlanPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+      setInputText("")
     }
   };
 
   const handleMenuClick = () => {
     setIsMenuOpen(!isMenuOpen);
+    setInputText("")
   };
 
   const handleClickOutside = (e: React.MouseEvent) => {
     if (isMenuOpen) {
       setIsMenuOpen(false);
+      setInputText("")
     }
   };
 
@@ -238,7 +191,7 @@ export default function NewPlanPage() {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto mb-4 space-y-6">
-            {messages.length === 0 ? (
+            {activeMessages.length === 0 ? (
               // Welcome message for new chat
               <motion.div
                 className="flex flex-col items-center justify-center h-full text-center space-y-6"
@@ -282,11 +235,11 @@ export default function NewPlanPage() {
               </motion.div>
             ) : (
               // Existing messages
-              messages.map((message) => (
+              activeMessages.map((message, index) => (
                 <motion.div
-                  key={message.id}
+                  key={index}
                   className={`flex items-start space-x-3 ${
-                    message.sender_id === "user-id" || message.sender_id !== "00000000-0000-0000-0000-000000000001"
+                    !message.response 
                       ? "justify-start"
                       : "justify-end"
                   }`}
@@ -294,7 +247,7 @@ export default function NewPlanPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {message.sender_id === "user-id" || message.sender_id !== "00000000-0000-0000-0000-000000000001"  ? (
+                  {message.message && (
                     <>
                       {/* User Avatar */}
                       <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
@@ -303,16 +256,18 @@ export default function NewPlanPage() {
                       {/* User Message */}
                       <div className="max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-lg border border-gray-300 bg-white">
                         <p className="text-gray-900 text-sm">
-                          {message.message_text}
+                          {message.message}
                         </p>
                       </div>
                     </>
-                  ) : (
+                  )}
+
+                  {message.response && (
                     <>
                       {/* Assistant Message */}
                       <div className="max-w-xs md:max-w-md lg:max-w-lg px-6 py-4 rounded-lg border border-purple-300 bg-purple-50">
                         <p className="text-purple-900 text-sm">
-                          {message.message_text}
+                          {message.response}
                         </p>
                       </div>
                       {/* Assistant Avatar */}

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLoginMutation } from "@/store/features/ApiSlice";
+import { useGetUserProfileQuery, useLoginMutation } from "@/store/features/ApiSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,16 +50,19 @@ export function LoginForm() {
       
       const result = await login(data).unwrap();
       
-      console.log("Login successful:", result);
+      if(result){
+        console.log("Login successful:", result);
+
       
       // Store tokens in cookies
-      setCookie('access_token', result.access_token, 7); // 7 days expiry
-      setCookie('refresh_token', result.refresh_token, 7);
-      setCookie('token_type', result.token_type, 7);
+      setCookie('access_token', result.access, 7); // 7 days expiry
+      setCookie('refresh_token', result.refresh, 7);
+      setCookie('token_type', 'bearer', 7);
       
       // Store login data in sessionStorage for immediate access
       sessionStorage.setItem('isLoggedIn', 'true');
       sessionStorage.setItem('userEmail', data.email);
+      }
       
       // After successful login, redirect to dashboard
       router.push("/dashboard");
@@ -146,16 +149,6 @@ export function LoginForm() {
         >
           {form.formState.isSubmitting || isLoading ? "LOGGING IN..." : "LOGIN"}
         </Button>
-
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
-          </div>
-        </div>
       </form>
     </Form>
   );

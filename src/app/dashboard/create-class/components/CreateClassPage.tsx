@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,10 +27,14 @@ import {
   useDeleteClassMutation,
   useUpdateClassMutation,
   useGetClassesQuery,
-  useGetParicularChatsQuery,
   useGetAllChatsQuery,
   useLazyGetMultiplePlansQuery,
+  useLazyGetChatQuery,
 } from "@/store/features/ApiSlice"; // RTK Query hooks
+import { title } from "process";
+import { useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
+import { setActiveMessages } from "@/store/features/chatSlice";
 
 // Types for Class and Chat
 interface Class {
@@ -49,38 +53,56 @@ interface Chat {
 }
 
 export default function CreateClassPage() {
-  const [currentView, setCurrentView] = useState<"empty" | "list" | "detail">(
-    "empty"
-  );
+  const [currentView, setCurrentView] = useState<"list" | "detail">("list");
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-  const [sortedChats, setSortedChats] = useState<any[]>([]);
-
-  const [fetchedProducts, setFetchedProducts] = useState<any[]>([]); // State to store fetched products
   const [productIdsToFetch, setProductIdsToFetch] = useState<string[]>([]);
-  const [productsData, setProductsData] = useState<any[]>([]);
   const [activePackage, setActivePackage] = useState<string | null>(null);
-  const [fetchedData, setFetchedData] = useState<{
-    packageName: string;
-    planIds: string[];
-    error?: string;
-    data?: any;
-    timestamp: string;
-    status: string;
-  }[]>([]);
+
+  const [fetchedData, setFetchedData] = useState<
+    {
+      conversation: [
+        {
+          chat_id: string;
+          id: string;
+          message_text: string;
+          receiver_id: string;
+          sender_id: string;
+          timestamp: string;
+        }
+      ];
+      title: string;
+      chatId: string;
+    }[]
+  >([
+    {
+      conversation: [
+        {
+          chat_id: "",
+          id: "",
+          message_text: "",
+          receiver_id: "",
+          sender_id: "",
+          timestamp: "",
+        },
+      ],
+      title: "",
+      chatId: "",
+    },
+  ]);
 
   const { data: classes = [], isLoading: classesLoading } =
     useGetClassesQuery(); // Default classes to an empty array if undefined
-  const { data: chats, isLoading: chatsLoading } = useGetAllChatsQuery(); // Fetch chats for the select dropdown
+  const { data: chats } = useGetAllChatsQuery(); // Fetch chats for the select dropdown
   const [createClass] = useCreateClassMutation();
   const [updateClass] = useUpdateClassMutation();
   const [deleteClass] = useDeleteClassMutation();
+  const [getChat] = useLazyGetChatQuery();
+  const dispatch = useDispatch();
+  const router = useRouter();
 
   const [fetchMultiplePlans, { isLoading }] = useLazyGetMultiplePlansQuery();
 
-  // console.log("chats in class form:", chats)
-
-  console.log("Fetched chat:", fetchedProducts);
-
+  console.log("class data", classes);
   const {
     control,
     handleSubmit,
@@ -103,11 +125,25 @@ export default function CreateClassPage() {
       title: data.title,
       description: data.description,
       schedule_info: data.schedule_info,
-      chat_ids: [data.chat_ids],
+      plan_ids: [data.chat_ids],
     };
     console.log(classData);
     createClass(classData);
     setCurrentView("list");
+  };
+
+  const handleParticularChats = async (id: string) => {
+
+    console.log("receiving chatID:",id)
+    if (!id) return;
+
+    const response = await getChat(id).unwrap();
+
+    console.log("Particular chat response:", response);
+    if (response) {
+      dispatch(setActiveMessages(response));
+      router.push("/dashboard");
+    }
   };
 
   const handleUpdateClassForm = (data: any) => {
@@ -134,63 +170,44 @@ export default function CreateClassPage() {
   };
 
   const handleBackToEmpty = () => {
-    setCurrentView("empty");
     setSelectedClass(null);
   };
 
-  const handleFetchPlans = async (planIds: string[], packageName: string, classItem: any) => {
+  const handleFetchPlans = async (
+    planIds: string[],
+    packageName: string,
+    classItem: any
+  ) => {
     setActivePackage(packageName); // Track which package is being fetched
 
-    try {
-      // 1. Fetch data using RTK Query
-      const result = await fetchMultiplePlans(planIds).unwrap();
+    if (planIds.length === 0) {
+      setSelectedClass(classItem);
+      setProductIdsToFetch(planIds);
+      setCurrentView("detail");
+    } else {
+      try {
+        // 1. Fetch data using RTK Query
+        const result = await fetchMultiplePlans(planIds).unwrap();
+        console.log("on select class data:", result);
+        // 2. Update internal state with SUCCESS data
+        if (result) {
+          setFetchedData(result);
+          setSelectedClass(classItem);
+          setProductIdsToFetch(planIds);
+          setCurrentView("detail");
+        }
+      } catch (error: any) {
+        console.error("Error fetching plans:", error);
 
-      // 2. Update internal state with SUCCESS data
-      setFetchedData({
-        packageName, // Which package was clicked
-        planIds, // Array of plan IDs that were fetched
-        data: result, // The actual API response data
-        timestamp: new Date().toLocaleTimeString(), // When it happened
-        status: "success",
-      });
-       setSelectedClass(classItem);
-    setProductIdsToFetch(planIds);
-    setCurrentView("detail");
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-
-      // 3. Update internal state with ERROR data
-      setFetchedData({
-        packageName,
-        planIds,
-        error: error.message || "Failed to fetch plans", // Error message instead of data
-        timestamp: new Date().toLocaleTimeString(),
-        status: "error",
-      });
-    } finally {
-      setActivePackage(null); // Clear active package
+        // 3. Update internal state with ERROR data
+        setFetchedData([]);
+      } finally {
+        setActivePackage(null); // Clear active package
+      }
     }
   };
-
-  // Empty State View
-  if (currentView === "empty") {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <Button
-            onClick={() => setCurrentView("list")}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 py-6 text-xl font-semibold rounded-xl shadow-lg"
-          >
-            Create a Class
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Class List View
   if (currentView === "list") {
-    if (classesLoading || chatsLoading) {
+    if (classesLoading) {
       return (
         <div className="flex-1 flex items-center justify-center p-8">
           <div>Loading...</div>
@@ -210,7 +227,6 @@ export default function CreateClassPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogTitle>Create New Class</DialogTitle>
-              <DialogHeader>Create New Class</DialogHeader>
               <form
                 onSubmit={handleSubmit(handleCreateClassForm)}
                 className="space-y-4"
@@ -309,19 +325,29 @@ export default function CreateClassPage() {
           </Dialog>
         </div>
 
-        <div className="max-w-2xl mx-auto mt-16 space-y-4">
+        <div className="mt-16 space-y-4 flex items-center gap-9">
           {classes.length === 0 ? (
             <div>No classes available</div>
           ) : (
             classes.map((classItem) => (
               <Button
                 key={classItem.id}
-                onClick={() => handleFetchPlans(classItem.plan_ids || [], classItem.title, classItem)}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-6 text-left rounded-xl shadow-md"
+                onClick={() =>
+                  handleFetchPlans(
+                    classItem.plan_ids || [],
+                    classItem.title,
+                    classItem
+                  )
+                }
+                className="md:size-40 mb-0 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 p-6 text-white rounded-xl shadow-md "
               >
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold">{classItem.title}</h3>
-                  <p className="text-sm opacity-90">{classItem.description}</p>
+                <div className="w-full h-full text-left">
+                  <h3 className="text-lg text-wrap font-semibold mb-2">
+                    {classItem.title}
+                  </h3>
+                  <p className="text-xs opacity-90 text-wrap">
+                    {classItem.description.slice(0, 35)}
+                  </p>
                 </div>
               </Button>
             ))
@@ -334,42 +360,36 @@ export default function CreateClassPage() {
   // Class Detail View (with chats loading dynamically)
   if (selectedClass) {
     return (
-      <div className="flex-1 p-8 relative">
-        <div className="max-w-2xl mx-auto mt-16">
-          <Card className="border-gray-200 shadow-sm">
-            <CardContent>
-              <h3 className="text-lg font-medium">{selectedClass?.name}</h3>
-              <p className="text-sm">{selectedClass?.lastModified}</p>
-            </CardContent>
-          </Card>
-
+      <div className="p-4 relative">
+        <Button
+          onClick={handleBackToList}
+          variant="outline"
+          className="bg-white shadow-lg hover:bg-gray-50"
+        >
+          <ArrowLeft /> Classes
+        </Button>
+        <div className="w-full mx-auto">
           {/* Display chats */}
           {fetchedData?.length === 0 ? (
-            <div>No saved chats available for this class.</div>
+            <h1 className="mt-16 text-center text-xl font-semibold">
+              No saved chats available for this class.
+            </h1>
           ) : (
             fetchedData?.map((chat, index) => (
-              <Card key={index} className="my-4 border-gray-200 shadow-sm">
+              <Card key={index} className="my-4 border-g  ay-200 shadow-sm hover:bg-gray-100" onClick={() => handleParticularChats(chat.chatId)}>
                 <CardContent>
-                  <h4 className="text-md font-medium">{chat.message_text}</h4>
+                  <h4 className="text-md font-medium">{chat.title}</h4>
                   <p className="text-sm">
-                    {new Date(chat.timestamp).toLocaleString()}
+                    Total Conversation: {chat.conversation.length}
                   </p>
                 </CardContent>
               </Card>
             ))
           )}
-
-          <Button
-            onClick={handleBackToList}
-            variant="outline"
-            className="bg-white shadow-lg hover:bg-gray-50"
-          >
-            ← Back to Classes
-          </Button>
         </div>
       </div>
     );
   }
 
-  return null;
+  // return null;
 }

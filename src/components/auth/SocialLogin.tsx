@@ -14,8 +14,15 @@ export function SocialLogin({ title = "Or Login With" }: SocialLoginProps) {
 
   return (
     <div className="mt-6">
-      <Separator className="my-4" />
-      <p className="text-center text-sm text-gray-500 mb-4">{title}</p>
+      
+      <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">{title}</span>
+          </div>
+        </div>
       <div className="flex justify-center space-x-4">
         <button
           onClick={() => handleSocialLogin("apple")}

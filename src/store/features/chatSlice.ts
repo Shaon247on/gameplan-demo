@@ -6,6 +6,8 @@ interface ChatState {
   currentPlanId: string | null;
   currentChatId: string | null;
   activeMessages: ChatMessage[];
+  planId: number | null;
+  gCount: number;
 }
 
 const initialState: ChatState = {
@@ -13,6 +15,8 @@ const initialState: ChatState = {
   currentPlanId: null,
   currentChatId: null,
   activeMessages: [],
+  planId: null,
+  gCount: 0
 };
 
 const chatSlice = createSlice({
@@ -34,10 +38,16 @@ const chatSlice = createSlice({
     addMessageToActiveChat: (state, action: PayloadAction<ChatMessage>) => {
       state.activeMessages.push(action.payload);
     },
+    setPlanId: (state, action: PayloadAction<number | null>)=>{
+      state.planId = action.payload
+    },
     clearActiveChat: (state) => {
       state.activeMessages = [];
       state.currentChatId = null;
     },
+    incrementGCount: (state, action: PayloadAction<number>)=>{
+      state.gCount = state.gCount + action.payload 
+    }
   },
 });
 
@@ -47,7 +57,9 @@ export const {
   setCurrentChat,
   setActiveMessages,
   addMessageToActiveChat,
+  setPlanId,
   clearActiveChat,
+  incrementGCount
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

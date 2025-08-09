@@ -1,22 +1,42 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Calendar, Plus, Play } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Plus,
+  Play,
+  Rss,
+} from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import {
   useEndConversationMutation,
   useGetAllChatsQuery,
-  useGetParicularChatsQuery,
+  useLazyGetChatQuery,
 } from "@/store/features/ApiSlice";
 import { useToken } from "@/hooks/useAuth";
-import { is } from "zod/v4/locales";
-import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setActiveMessages } from "@/store/features/chatSlice";
-import useAccessToken from "@/hooks/useAccessToken";
+import {
+  incrementGCount,
+  setActiveMessages,
+  setPlanId,
+} from "@/store/features/chatSlice";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { RootState } from "@/store/store";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  transformConversation,
+  useTransformConversation,
+} from "@/hooks/useTransformConversation";
 
 interface SidebarItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -25,20 +45,12 @@ interface SidebarItem {
 }
 
 interface LastMessage {
-  message_text: string; // The content of the last message
-  id: string; // The unique identifier for the message
-  chat_id: string; // The ID of the chat the message belongs to
-  sender_id: string; // The ID of the sender of the message
-  receiver_id: string; // The ID of the receiver of the message
-  timestamp: string; // The timestamp when the message was sent (ISO 8601 string)
-}
-
-// Define the type for a chat
-interface Chat {
-  id: string; // Unique identifier for the chat
-  participants: string[]; // Array of user IDs participating in the chat
-  last_message: LastMessage; // The last message in the chat
-  updated_at: string; // The timestamp when the chat was last updated (ISO 8601 string)
+  message_text: string;
+  id: string;
+  chat_id: string;
+  sender_id: string;
+  receiver_id: string;
+  timestamp: string;
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -48,25 +60,15 @@ const sidebarItems: SidebarItem[] = [
 
 export default function Sidebar() {
   const dispatch = useDispatch();
-  const accessToken = useAccessToken();
-  const [chatId, setChatId] = useState<string>("");
-  const [sortedChats, setSortedChats] = useState<Chat[]>([]);
   const { isCollapsed, setIsCollapsed, animationDuration } = useSidebar();
-  const { data: allChats = [], isLoading: isChatLoading } = useGetAllChatsQuery();
   const [endConversation] = useEndConversationMutation();
-  const { activeMessages } = useSelector((state: RootState) => state.chat);
-
-  const {
-    data: chatMessages,
-    error,
-    isLoading,
-  } = useGetParicularChatsQuery(chatId, {
-    skip: chatId === "", // Skip the query when chatId is an empty string
-  });
+  const [getChat] = useLazyGetChatQuery();
+  const { data: allChats = [], isLoading: isChatLoading } =
+    useGetAllChatsQuery();
+  const router = useRouter();
 
   const token = useToken();
   console.log("access token:", token);
-
   console.log("All chats:", allChats);
 
   const sidebarVariants = {
@@ -96,66 +98,29 @@ export default function Sidebar() {
     },
   };
 
-  useEffect(() => {
-    if (chatMessages && chatMessages.length > 0) {
-      // Dispatch the chat messages to Redux
-      dispatch(setActiveMessages(chatMessages));
-      console.log("possitive activeMessage:", activeMessages);
-    } else {
-      dispatch(setActiveMessages([]));
-      console.log("Negative activeMessage:", activeMessages);
+  const handleParticularChats = async (id: number) => {
+    const response = await getChat(id).unwrap();
+    if (response) {
     }
-  }, [chatMessages, dispatch]);
-
-  // useEffect(() => {
-  //   // Function to filter, sort, and slice the chats
-  //   const processChats = () => {
-  //     if (allChats === undefined) {
-  //       setSortedChats([]);
-  //     } else {
-  //       const filteredAndSortedChats =
-  //         allChats?.length > 0
-  //           ? allChats
-  //               .filter((item) => item.last_message !== null) // Filter out chats without valid last_message
-  //               .sort((a, b) => {
-  //                 if (a.last_message && b.last_message) {
-  //                   const dateA = new Date(a.last_message.timestamp);
-  //                   const dateB = new Date(b.last_message.timestamp);
-  //                   return dateB.getTime() - dateA.getTime(); // Sort by descending timestamp
-  //                 }
-  //                 return 0;
-  //               })
-  //               .slice(0, 3)
-  //           : []; // Only take the first 3 chats
-
-  //       // Update the state with filtered and sorted chats
-  //       setSortedChats(filteredAndSortedChats);
-  //     }
-  //   };
-
-  //   // Process the chats whenever `allChats` changes
-  //   processChats();
-  // }, [allChats]);
-
-  const handleParticularChats = (id: string) => {
-    setChatId(id); // Update the chatId when a chat button is clicked
+    if (response) {
+      const formedArray = transformConversation(response);
+      dispatch(setActiveMessages(formedArray));
+      dispatch(setPlanId(response.id))
+      router.push("/dashboard");
+    }
   };
-
-  // useEffect(()=>{
-
-  // },[])
 
   const handleNewPlanClick = async () => {
     try {
-      // Call the 'endConversation' to start a new chat
-      await endConversation().unwrap();
-
-      // Clear any existing chat state and navigate to dashboard
-      sessionStorage.removeItem("chatMessages");
-      window.location.href = "/dashboard?newPlan=true"; // Redirect to create a new plan
+      const response = await endConversation().unwrap();
+      if (response) {
+        sessionStorage.removeItem("chatMessages");
+        dispatch(setActiveMessages([]));
+        dispatch(setPlanId(response.id));
+        router.push("/dashboard");
+      } else dispatch(setPlanId(null));
     } catch (error) {
       console.error("Error starting a new conversation:", error);
-      // Handle error appropriately
     }
   };
 
@@ -287,25 +252,14 @@ export default function Sidebar() {
                 </div>
                 {allChats.map((item, index) => (
                   <div key={index}>
-                    {item.last_message ? (
-                      <Button
-                        variant={"outline"}
-                        onClick={() =>
-                          handleParticularChats(item.last_message.chat_id)
-                        }
-                        key={index}
-                        className="w-40 overflow-hidden text-start hover:bg-amber-200 h-10"
-                      >
-                        {item.last_message
-                          ? `${item.last_message?.message_text?.slice(
-                              0,
-                              20
-                            )}...`
-                          : "No recent chats"}
-                      </Button>
-                    ) : (
-                      <></>
-                    )}
+                    <Button
+                      variant={"outline"}
+                      onClick={() => handleParticularChats(item?.id)}
+                      key={index}
+                      className="w-40 overflow-hidden text-start hover:bg-amber-200 h-10"
+                    >
+                      {item.title}
+                    </Button>
                   </div>
                 ))}
               </div>

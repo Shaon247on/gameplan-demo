@@ -1,3 +1,4 @@
+import { ChatMessage } from "@/app/dashboard/page";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 // Cookie utility functions
@@ -42,7 +43,7 @@ export interface SignUpRequest {
   email: string;
   password: string;
   confirm_password: string;
-  agreed_to_terms: boolean;
+  agree_terms: boolean;
 }
 
 export interface LoginRequest {
@@ -74,9 +75,8 @@ export interface SignUpResponse {
 }
 
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
+  access: string;
+  refresh: string;
 }
 
 export interface UpdateUserRequest {
@@ -118,16 +118,6 @@ export interface UpdatePlanRequest {
   end_date?: string;
 }
 
-export interface ChatResponse {
-  message_text: string;
-  last_message: string;
-  last_message_timestamp: string;
-  id: string;
-  chat_id: string;
-  sender_id: string;
-  receiver_id: string;
-  timestamp: string;
-}
 
 interface Class {
   id: string; // UUID
@@ -155,6 +145,21 @@ interface ValidationError {
   type: string; // Type of error
 }
 
+interface TagType {
+  items: string[];
+}
+
+interface Conversation {
+  id: number;
+  title: string;
+  conversation: any[]; // Or a more specific type if you know the shape
+  is_saved: boolean;
+  pinned_date: string | null;
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
+  user: number;
+};
+
 // Create the API slice
 export const apiSlice = createApi({
   reducerPath: "api",
@@ -168,17 +173,17 @@ export const apiSlice = createApi({
       if (typeof window !== "undefined") {
         const accessToken = document.cookie
           .split("; ")
-          .find((row) => row.startsWith("access_token="))
+          .find((row) => row.startsWith("access_token"))
           ?.split("=")[1];
 
-        const tokenType =
-          document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("token_type="))
-            ?.split("=")[1] || "bearer";
+        // const tokenType =
+        //   document.cookie
+        //     .split("; ")
+        //     .find((row) => row.startsWith("token_type"))
+        //     ?.split("=")[1] || "bearer";
 
         if (accessToken) {
-          headers.set("Authorization", `${tokenType} ${accessToken}`);
+          headers.set("Authorization", `Bearer ${accessToken}`);
         }
       }
 
@@ -191,13 +196,13 @@ export const apiSlice = createApi({
       return response.status < 500; // Don't treat 4xx as errors
     },
   }),
-  tagTypes: ["User", "Plan", "Chat", "Class"], // Define cache tags for invalidation
+  tagTypes: ["User", "Plan", "Chat", "Class", "login"], // Define cache tags for invalidation
   endpoints: (builder) => ({
     // Auth endpoints
 
     signUp: builder.mutation<SignUpResponse, SignUpRequest>({
       query: (credentials) => ({
-        url: "/api/auth/signup",
+        url: "/api/signup/",
         method: "POST",
         body: credentials,
       }),
@@ -205,7 +210,7 @@ export const apiSlice = createApi({
 
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
-        url: "/api/auth/login",
+        url: "/api/login/",
         method: "POST",
         body: credentials,
         credentials: "include",
@@ -234,7 +239,7 @@ export const apiSlice = createApi({
     // Forgot Password endpoints
     requestForgotPasswordCode: builder.mutation<string, ForgotPasswordRequest>({
       query: (data) => ({
-        url: "/api/auth/forgot-password/request-code",
+        url: "/api/forgot-password/",
         method: "POST",
         body: data,
       }),
@@ -242,7 +247,7 @@ export const apiSlice = createApi({
 
     verifyForgotPasswordCode: builder.mutation<string, VerifyCodeRequest>({
       query: (data) => ({
-        url: "/api/auth/forgot-password/verify-code",
+        url: "/api/forgot-password/verify-code",
         method: "POST",
         body: data,
       }),
@@ -250,21 +255,28 @@ export const apiSlice = createApi({
 
     resetPassword: builder.mutation<string, ResetPasswordRequest>({
       query: (data) => ({
-        url: "/api/auth/forgot-password/reset",
+        url: "/api/forgot-password/reset",
         method: "POST",
         body: data,
+        credentials: "include",
       }),
     }),
 
     // User profile endpoint
     getUserProfile: builder.query<User, void>({
-      query: () => "/api/auth/me",
+      query: () => ({
+        url: "/api/user/profile",
+        credentials: "include",
+      }),
       providesTags: ["User"],
     }),
 
     // Plan endpoints
     getPlans: builder.query<Plan[], void>({
-      query: () => "/api/plans/",
+      query: () => ({
+        url: "/api/plans/",
+        credentials: "include",
+      }),
       providesTags: ["Plan"],
     }),
 
@@ -274,7 +286,10 @@ export const apiSlice = createApi({
     }),
 
     getLastPlan: builder.query<Plan, void>({
-      query: () => "/api/plans/last",
+      query: () => ({
+        url: "/api/plans/last",
+        credentials: "include",
+      }),
       providesTags: ["Plan"],
     }),
 
@@ -283,16 +298,17 @@ export const apiSlice = createApi({
         url: "/api/plans/",
         method: "POST",
         body: plan,
+        credentials: "include",
       }),
       invalidatesTags: ["Plan"],
     }),
-
     updatePlan: builder.mutation<Plan, { id: string; plan: UpdatePlanRequest }>(
       {
         query: ({ id, plan }) => ({
           url: `/api/plans/${id}`,
           method: "PUT",
           body: plan,
+          credentials: "include",
         }),
         invalidatesTags: ["Plan"],
       }
@@ -302,6 +318,7 @@ export const apiSlice = createApi({
       query: (id) => ({
         url: `/api/plans/${id}`,
         method: "DELETE",
+        credentials: "include",
       }),
       invalidatesTags: ["Plan"],
     }),
@@ -310,7 +327,7 @@ export const apiSlice = createApi({
 
     // to continue conversation
 
-    sendMessage: builder.mutation<ChatResponse, { message_text: string }>({
+    sendMessage: builder.mutation<ChatMessage, ChatMessage>({
       query: (message) => ({
         url: "/api/chats/",
         method: "POST",
@@ -321,51 +338,61 @@ export const apiSlice = createApi({
 
     // to get a conversation
 
-    getParicularChats: builder.query<ChatResponse[], string | string[]>({
-      query: (chat_id) => `/api/chats/${chat_id}`,
+    getChat: builder.query<Conversation, number>({
+      query: (chat_id) => `/api/chats/${chat_id}/`,
     }),
     getAllChats: builder.query<ChatResponse[], void>({
-      query: () => `/api/chats/`,
+      query: () => ({
+        url: `/api/chats/`,
+        credentials: "include", // ✅ sends cookies with request
+      }),
       providesTags: ["Chat"],
-      transformResponse: (response: ChatResponse[]) => {
-        return response
-          .filter((chat) => chat.last_message !== null)
-          .sort(
-            (a, b) =>
-              new Date(b.last_message_timestamp).getTime() -
-              new Date(a.last_message_timestamp).getTime()
-          );
-      },
+      // transformResponse: (response: ChatResponse[]) => {
+      //   return response
+      //     .filter((chat) => chat.last_message !== null)
+      //     .sort(
+      //       (a, b) =>
+      //         new Date(b.last_message_timestamp).getTime() -
+      //         new Date(a.last_message_timestamp).getTime()
+      //     );
+      // },
     }),
 
     getMultiplePlans: builder.query({
-      async queryFn(planIds, _queryApi, _extraOptions, fetchWithBQ) {
+      async queryFn(planIds: string[], _queryApi, _extraOptions, fetchWithBQ) {
         try {
-          const data = [];
-          
-          // Fetch each plan ID one by one
-          for (const planId of planIds) {
-            const result = await fetchWithBQ(`api/classes/${planId}`);
-            
-            if (result.error) {
-              console.error(`Failed to fetch plan ID: ${planId}`, result.error);
-              // Continue with next plan instead of stopping
-              data.push({
-                error: `Failed to fetch plan ${planId}`,
-                planId: planId
-              });
-              continue;
+          // Run all requests concurrently
+          const requests = planIds.map((planId) =>
+            fetchWithBQ(`api/chats/${planId}`).then((result) => ({
+              result,
+              planId,
+            }))
+          );
+          const responses = await Promise.all(requests);
+          // Structure the response
+          const structured = responses.map(({ result, planId }) => {
+            if (result.error || !Array.isArray(result.data)) {
+              console.error(`Failed to fetch chat ID: ${planId}`, result.error);
+              return {
+                title: "",
+                conversation: [],
+                error: result.error,
+                planId,
+              };
             }
-            
-            // Add the response data to our array
-            data.push(result.data);
-          }
-          
-          return { data };
+
+            return {
+              title: result.data[0]?.message_text || "",
+              conversation: result.data,
+              chatId: result.data[0]?.chat_id,
+            };
+          });
+
+          return { data: structured };
         } catch (error: any) {
           return {
             error: {
-              status: 'FETCH_ERROR',
+              status: "FETCH_ERROR",
               data: error.message,
             },
           };
@@ -373,9 +400,9 @@ export const apiSlice = createApi({
       },
     }),
 
-    endConversation: builder.mutation<null, void>({
+    endConversation: builder.mutation<Conversation, void>({
       query: () => ({
-        url: "/api/chats/new", // Endpoint to end and start a new conversation
+        url: "/api/chats/new/", // Endpoint to end and start a new conversation
         method: "POST", // Assuming it is a POST request, though no body is required
         body: {},
       }),
@@ -463,6 +490,7 @@ export const {
   // Auth hooks
 
   useLoginMutation,
+  useSignUpMutation,
   useLogoutMutation,
   useRequestForgotPasswordCodeMutation,
   useVerifyForgotPasswordCodeMutation,
@@ -477,10 +505,10 @@ export const {
   useDeletePlanMutation,
   // Chat Hooks
   useSendMessageMutation,
-  useGetParicularChatsQuery,
+  useLazyGetChatQuery,
   useGetAllChatsQuery,
   useEndConversationMutation,
-  useLazyGetMultiplePlansQuery ,
+  useLazyGetMultiplePlansQuery,
   // Classes Hooks
   useGetClassesQuery,
   useCreateClassMutation,
@@ -489,5 +517,4 @@ export const {
   useDeleteClassMutation,
   useAddPlanToClassMutation,
   useRemovePlanFromClassMutation,
-  useSignUpMutation,
 } = apiSlice;

@@ -13,7 +13,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useLogoutMutation } from '@/store/features/ApiSlice';
+import { useGetUserProfileQuery, useLogoutMutation } from '@/store/features/ApiSlice';
 import { useMobileOnly } from '@/hooks/useMobileOnly';
 
 interface MenuItem {
@@ -29,6 +29,8 @@ export default function MobileProfilePage() {
   const [userName, setUserName] = useState('Dr. Ali');
   const [userRole, setUserRole] = useState('Medicine specialist');
   const [logout] = useLogoutMutation();
+  const {data} = useGetUserProfileQuery()
+  console.log("User profile:", data)
   const router = useRouter();
 
   // Get user data from session storage
@@ -201,7 +203,7 @@ function ProfileContent() {
         </div>
         
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-800">Ali</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Ali Ahmed</h3>
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium mt-2 inline-block">
             Standard Account
           </div>
