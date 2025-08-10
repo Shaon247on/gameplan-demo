@@ -138,6 +138,10 @@ export default function NewPlanPage() {
     }
   };
 
+  const handleChatpinCalander = async (data)=>{
+    console.log(data)
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Main Chat Container */}

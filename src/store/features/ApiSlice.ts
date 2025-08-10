@@ -119,23 +119,26 @@ export interface UpdatePlanRequest {
 }
 
 
-interface Class {
+interface ClassResults {
   id: string; // UUID
-  user_id?: string; // UUID
+  pinned_date?: string | null; // UUID
   title: string;
-  description: string;
-  schedule_info: string;
-  plan_ids?: string[]; // List of associated plan IDs
+  notes: string;
+  plan?: number; // List of associated plan IDs
   created_at?: string; // ISO 8601 Timestamp
-  updated_at?: string; // ISO 8601 Timestamp
+}
+
+interface Class{
+  count: number;
+  next: number | null;
+  previous: number | null;
+  results: ClassResults[]
 }
 
 // Request Type for creating or updating a class
 interface ClassRequest {
   title: string;
-  description: string;
-  schedule_info: string;
-  plan_ids: string[];
+  nodes: string;
 }
 
 // Error Type (for validation errors)
@@ -149,16 +152,15 @@ interface TagType {
   items: string[];
 }
 
-interface Conversation {
+export interface Conversation {
   id: number;
   title: string;
-  conversation: any[]; // Or a more specific type if you know the shape
+  conversation: { role: string; content: string }[];
   is_saved: boolean;
   pinned_date: string | null;
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
-  user: number;
-};
+  created_at: string;
+  updated_at: string;
+}
 
 // Create the API slice
 export const apiSlice = createApi({
@@ -409,14 +411,14 @@ export const apiSlice = createApi({
     }),
     // Get all classes
     getClasses: builder.query<Class[], void>({
-      query: () => "/api/classes/",
+      query: () => "/api/classes/saved/",
       providesTags: ["Class"], // Provides a cache tag for invalidation
     }),
 
     // Create a new class
     createClass: builder.mutation<Class, ClassRequest>({
       query: (newClass) => ({
-        url: "/api/classes/",
+        url: "/api/classes/create/",
         method: "POST",
         body: newClass,
       }),

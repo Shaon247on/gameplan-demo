@@ -30,11 +30,13 @@ import {
   useGetAllChatsQuery,
   useLazyGetMultiplePlansQuery,
   useLazyGetChatQuery,
+  Conversation,
 } from "@/store/features/ApiSlice"; // RTK Query hooks
 import { title } from "process";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { setActiveMessages } from "@/store/features/chatSlice";
+import { transformConversation } from "@/hooks/useTransformConversation";
 
 // Types for Class and Chat
 interface Class {
@@ -55,40 +57,23 @@ interface Chat {
 export default function CreateClassPage() {
   const [currentView, setCurrentView] = useState<"list" | "detail">("list");
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-  const [productIdsToFetch, setProductIdsToFetch] = useState<string[]>([]);
+  const [productIdsToFetch, setProductIdsToFetch] = useState<string>("");
   const [activePackage, setActivePackage] = useState<string | null>(null);
 
-  const [fetchedData, setFetchedData] = useState<
-    {
-      conversation: [
-        {
-          chat_id: string;
-          id: string;
-          message_text: string;
-          receiver_id: string;
-          sender_id: string;
-          timestamp: string;
-        }
-      ];
-      title: string;
-      chatId: string;
-    }[]
-  >([
-    {
-      conversation: [
-        {
-          chat_id: "",
-          id: "",
-          message_text: "",
-          receiver_id: "",
-          sender_id: "",
-          timestamp: "",
-        },
-      ],
-      title: "",
-      chatId: "",
-    },
-  ]);
+  const [fetchedData, setFetchedData] = useState<Conversation>({
+    id: 0,
+    title: "",
+    conversation: [
+      {
+        role: "",
+        content: "",
+      },
+    ],
+    is_saved: false,
+    pinned_date: "",
+    created_at: "",
+    updated_at: "",
+  });
 
   const { data: classes = [], isLoading: classesLoading } =
     useGetClassesQuery(); // Default classes to an empty array if undefined
@@ -102,7 +87,8 @@ export default function CreateClassPage() {
 
   const [fetchMultiplePlans, { isLoading }] = useLazyGetMultiplePlansQuery();
 
-  console.log("class data", classes);
+  console.log("class data", classes.results);
+  console.log("Chat in class", fetchedData);
   const {
     control,
     handleSubmit,
@@ -112,36 +98,35 @@ export default function CreateClassPage() {
     resolver: zodResolver(classSchema), // Zod validation
     defaultValues: {
       title: "",
-      description: "",
-      schedule_info: "",
-      chat_ids: "",
+      nodes: "",
     },
   });
 
   // Function to fetch chats for selected class
 
-  const handleCreateClassForm = (data: any) => {
+  const handleCreateClassForm = (data: {title: string; nodes: string;}) => {
+    console.log("setting data from class submite:",data)
+
     const classData = {
       title: data.title,
-      description: data.description,
-      schedule_info: data.schedule_info,
-      plan_ids: [data.chat_ids],
+      nodes: data.nodes
     };
     console.log(classData);
     createClass(classData);
     setCurrentView("list");
+
   };
 
-  const handleParticularChats = async (id: string) => {
-
-    console.log("receiving chatID:",id)
+  const handleParticularChats = async (id: number) => {
+    console.log("receiving chatID:", id);
     if (!id) return;
 
     const response = await getChat(id).unwrap();
 
     console.log("Particular chat response:", response);
     if (response) {
-      dispatch(setActiveMessages(response));
+      const transformedChat = transformConversation(response)
+      dispatch(setActiveMessages(transformedChat));
       router.push("/dashboard");
     }
   };
@@ -174,33 +159,47 @@ export default function CreateClassPage() {
   };
 
   const handleFetchPlans = async (
-    planIds: string[],
+    planId: number,
     packageName: string,
     classItem: any
   ) => {
     setActivePackage(packageName); // Track which package is being fetched
 
-    if (planIds.length === 0) {
+    if (planId === null) {
       setSelectedClass(classItem);
-      setProductIdsToFetch(planIds);
+      // setProductIdsToFetch(planIds);
       setCurrentView("detail");
     } else {
       try {
         // 1. Fetch data using RTK Query
-        const result = await fetchMultiplePlans(planIds).unwrap();
+        // const result = await fetchMultiplePlans(planIds).unwrap();
+        const result = await getChat(planId).unwrap();
         console.log("on select class data:", result);
         // 2. Update internal state with SUCCESS data
         if (result) {
           setFetchedData(result);
           setSelectedClass(classItem);
-          setProductIdsToFetch(planIds);
+          setProductIdsToFetch(planId);
           setCurrentView("detail");
         }
       } catch (error: any) {
         console.error("Error fetching plans:", error);
 
         // 3. Update internal state with ERROR data
-        setFetchedData([]);
+        setFetchedData({
+          id: 0,
+          title: "",
+          conversation: [
+            {
+              role: "",
+              content: "",
+            },
+          ],
+          is_saved: false,
+          pinned_date: "",
+          created_at: "",
+          updated_at: "",
+        });
       } finally {
         setActivePackage(null); // Clear active package
       }
@@ -225,7 +224,7 @@ export default function CreateClassPage() {
                 Create New Class
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogTitle>Create New Class</DialogTitle>
               <form
                 onSubmit={handleSubmit(handleCreateClassForm)}
@@ -247,71 +246,19 @@ export default function CreateClassPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Description
+                    Nodes
                   </label>
                   <textarea
-                    {...control.register("description")}
+                    {...control.register("nodes")}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                    placeholder="Class Description"
+                    placeholder="Class nodes"
                   />
-                  {errors.description && (
+                  {errors.nodes && (
                     <span className="text-red-500">
-                      {errors.description.message}
+                      {errors.nodes.message}
                     </span>
                   )}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Schedule Info
-                  </label>
-                  <input
-                    {...control.register("schedule_info")}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                    placeholder="Schedule Info"
-                  />
-                  {errors.schedule_info && (
-                    <span className="text-red-500">
-                      {errors.schedule_info.message}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Chats
-                  </label>
-                  <Controller
-                    control={control}
-                    name="chat_ids"
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Chats" />
-                        </SelectTrigger>
-                        <SelectContent className="max-w-40">
-                          {chats?.map((chat) => (
-                            <SelectItem
-                              key={chat.id}
-                              value={chat.last_message?.chat_id}
-                            >
-                              {`${chat.last_message?.message_text.slice(
-                                0,
-                                13
-                              )}...` || `Chat ${chat.id}`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {errors.chat_ids && (
-                    <span className="text-red-500">
-                      {errors.chat_ids.message}
-                    </span>
-                  )}
-                </div>
-
                 <DialogFooter>
                   <Button
                     type="submit"
@@ -326,18 +273,14 @@ export default function CreateClassPage() {
         </div>
 
         <div className="mt-16 space-y-4 flex items-center gap-9">
-          {classes.length === 0 ? (
+          {classes?.results?.length === 0 ? (
             <div>No classes available</div>
           ) : (
-            classes.map((classItem) => (
+            classes?.results?.map((classItem) => (
               <Button
                 key={classItem.id}
                 onClick={() =>
-                  handleFetchPlans(
-                    classItem.plan_ids || [],
-                    classItem.title,
-                    classItem
-                  )
+                  handleFetchPlans(classItem.plan, classItem.title, classItem)
                 }
                 className="md:size-40 mb-0 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 p-6 text-white rounded-xl shadow-md "
               >
@@ -346,7 +289,7 @@ export default function CreateClassPage() {
                     {classItem.title}
                   </h3>
                   <p className="text-xs opacity-90 text-wrap">
-                    {classItem.description.slice(0, 35)}
+                    {classItem.notes.slice(0, 35)}
                   </p>
                 </div>
               </Button>
@@ -370,21 +313,22 @@ export default function CreateClassPage() {
         </Button>
         <div className="w-full mx-auto">
           {/* Display chats */}
-          {fetchedData?.length === 0 ? (
+          {fetchedData.title === ""  ? (
             <h1 className="mt-16 text-center text-xl font-semibold">
               No saved chats available for this class.
             </h1>
           ) : (
-            fetchedData?.map((chat, index) => (
-              <Card key={index} className="my-4 border-g  ay-200 shadow-sm hover:bg-gray-100" onClick={() => handleParticularChats(chat.chatId)}>
+              <Card
+                className="my-4 border-g  ay-200 shadow-sm hover:bg-gray-100"
+                onClick={() => handleParticularChats(fetchedData.id)}
+              >
                 <CardContent>
-                  <h4 className="text-md font-medium">{chat.title}</h4>
+                  <h4 className="text-md font-medium">{fetchedData.title}</h4>
                   <p className="text-sm">
-                    Total Conversation: {chat.conversation.length}
+                    Total Conversation: {fetchedData.conversation.length}
                   </p>
                 </CardContent>
               </Card>
-            ))
           )}
         </div>
       </div>
