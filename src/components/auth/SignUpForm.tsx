@@ -66,7 +66,7 @@ export function SignUpForm() {
       ) {
         console.log("Signup successful:", result);
         // After successful signup, redirect to pricing page
-        router.push("/pricing");
+        router.push("/login");
       } else {
         console.error("Signup failed:", result.message);
         alert(result.message || "Signup failed");

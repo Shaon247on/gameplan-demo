@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import Image from "next/image";
+import { useUpdateSubscriptionMutation } from "@/store/features/ApiSlice";
 
 export default function PricingPage() {
   const router = useRouter();
+  const [updateSubscription, { isLoading }] = useUpdateSubscriptionMutation();
 
   const handleFreeTrial = () => {
     // TODO: Implement free trial logic here
@@ -15,17 +17,34 @@ export default function PricingPage() {
     router.push("/dashboard");
   };
 
-  const handleChoosePlan = (plan: "monthly" | "yearly") => {
+  const handleChoosePlan = async (plan: "monthly" | "yearly") => {
     // TODO: Implement plan selection logic here
     console.log(`${plan} plan selected`);
-    router.push("/dashboard");
+    const price_id =
+      plan === "monthly"
+        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY
+        : process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY;
+    console.log("price_id:", price_id, process.env.STRIPE_PRICE_MONTHLY);
+
+    const response = await updateSubscription(price_id).unwrap();
+
+    if (response) {
+      console.log("Subscription updated successfully:", response.checkout_url);
+      window.location.href = response.checkout_url;
+    }
   };
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-8">
       {/* Logo */}
       <div className="text-center mb-8">
-        <Image src={"/logo.png"} alt="logo image" width={225} height={63} className="md:max-w-[225px] md:max-h-[63px]"/>
+        <Image
+          src={"/logo.png"}
+          alt="logo image"
+          width={225}
+          height={63}
+          className="md:max-w-[225px] md:max-h-[63px]"
+        />
       </div>
 
       {/* Features List */}
@@ -98,4 +117,4 @@ export default function PricingPage() {
       </div>
     </div>
   );
-} 
+}

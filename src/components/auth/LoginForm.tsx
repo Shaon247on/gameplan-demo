@@ -65,7 +65,7 @@ export function LoginForm() {
       }
       
       // After successful login, redirect to dashboard
-      router.push("/dashboard");
+      router.push("/pricing");
     } catch (error) {
       console.error("Login error:", error);
       alert("Login failed. Please check your credentials and try again.");

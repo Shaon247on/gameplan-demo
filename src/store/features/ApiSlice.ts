@@ -166,7 +166,7 @@ export interface Conversation {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl: "https://ppp7rljm-8000.inc1.devtunnels.ms/", // Your actual API base URL
+    baseUrl: "https://gamplandjango-2.onrender.com/", // Your actual API base URL
     prepareHeaders: (headers) => {
       // Add any default headers here (e.g., authorization)
       headers.set("Content-Type", "application/json");
@@ -349,15 +349,6 @@ export const apiSlice = createApi({
         credentials: "include", // ✅ sends cookies with request
       }),
       providesTags: ["Chat"],
-      // transformResponse: (response: ChatResponse[]) => {
-      //   return response
-      //     .filter((chat) => chat.last_message !== null)
-      //     .sort(
-      //       (a, b) =>
-      //         new Date(b.last_message_timestamp).getTime() -
-      //         new Date(a.last_message_timestamp).getTime()
-      //     );
-      // },
     }),
 
     getMultiplePlans: builder.query({
@@ -484,6 +475,13 @@ export const apiSlice = createApi({
         { type: "Class", id: classId },
       ],
     }),
+    updateSubscription: builder.mutation({
+      query: (price_id)=>({
+        url: "/api/payments/create-checkout-session/",
+        method: "POST",
+        body: { price_id }
+      })
+    })
   }),
 });
 
@@ -519,4 +517,6 @@ export const {
   useDeleteClassMutation,
   useAddPlanToClassMutation,
   useRemovePlanFromClassMutation,
+  // Payment Hooks 
+  useUpdateSubscriptionMutation
 } = apiSlice;
