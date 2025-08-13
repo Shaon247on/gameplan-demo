@@ -143,6 +143,7 @@ export default function NewPlanPage() {
   };
 
   return (
+    <Suspense>
       <div className="flex flex-col h-screen bg-gray-50">
         {/* Main Chat Container */}
 
@@ -318,5 +319,6 @@ export default function NewPlanPage() {
           </motion.div>
         </div>
       </div>
+      </Suspense>
   );
 }
