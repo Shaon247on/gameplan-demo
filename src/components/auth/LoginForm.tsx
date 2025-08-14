@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useGetUserProfileQuery, useLoginMutation } from "@/store/features/ApiSlice";
+import {
+  useGetUserProfileQuery,
+  useLazyGetUserpackageQuery,
+  useLoginMutation,
+} from "@/store/features/ApiSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,21 +22,21 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { loginSchema, type LoginFormData } from "@/lib/schemas/auth";
+import { toast } from "sonner";
 
 // Cookie utility function
 const setCookie = (name: string, value: string, days: number = 7) => {
-  if (typeof window === 'undefined') return
-  
-  const expires = new Date()
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`
-}
+  if (typeof window === "undefined") return;
 
-
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+};
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [login, { isLoading, error }] = useLoginMutation();
+  const [getUserPackage] = useLazyGetUserpackageQuery();
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -47,31 +51,34 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       console.log("Login data:", data);
-      
+
       const result = await login(data).unwrap();
-      
-      if(result){
+
+      if (result) {
         console.log("Login successful:", result);
 
-      
-      // Store tokens in cookies
-      setCookie('access_token', result.access, 7); // 7 days expiry
-      setCookie('refresh_token', result.refresh, 7);
-      setCookie('token_type', 'bearer', 7);
-      
-      // Store login data in sessionStorage for immediate access
-      sessionStorage.setItem('isLoggedIn', 'true');
-      sessionStorage.setItem('userEmail', data.email);
+        // Store tokens in cookies
+        setCookie("access_token", result.access, 7); // 7 days expiry
+        setCookie("refresh_token", result.refresh, 7);
+        setCookie("token_type", "bearer", 7);
+
+        // Store login data in sessionStorage for immediate access
+        sessionStorage.setItem("isLoggedIn", "true");
+        sessionStorage.setItem("userEmail", data.email);
+        const userPackage = await getUserPackage().unwrap();
+        if (userPackage.account_type === "Pro" || userPackage.account_type === "Standard") {
+          router.push("/dashboard");
+        } else {
+          router.push("/pricing");
+        }
+        // After successful login, redirect to dashboard
       }
-      
-      // After successful login, redirect to dashboard
-      router.push("/pricing");
+      toast.success("Login successful!");
     } catch (error) {
       console.error("Login error:", error);
       alert("Login failed. Please check your credentials and try again.");
     }
   };
-
 
   return (
     <Form {...form}>

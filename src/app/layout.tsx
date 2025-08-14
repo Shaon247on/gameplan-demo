@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import StoreProvider from "@/store/StoreProvider";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { Toaster } from "sonner";
 
 const montserrat = Montserrat({
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
@@ -26,6 +27,7 @@ export default async function RootLayout({
         <div>
             <StoreProvider>
               <AuthProvider>
+                <Toaster/>
                 <main>{children}</main>
               </AuthProvider>
             </StoreProvider>

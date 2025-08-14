@@ -5,16 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import Image from "next/image";
-import { useUpdateSubscriptionMutation } from "@/store/features/ApiSlice";
+import { useLazyGetUserpackageQuery, useUpdateStandartPackageMutation, useUpdateSubscriptionMutation } from "@/store/features/ApiSlice";
+import { toast } from "sonner";
 
 export default function PricingPage() {
   const router = useRouter();
   const [updateSubscription, { isLoading }] = useUpdateSubscriptionMutation();
+  const [updateTrialPackage] = useUpdateStandartPackageMutation();
 
-  const handleFreeTrial = () => {
+  const handleFreeTrial = async () => {
+    const response = await updateTrialPackage().unwrap();
+
+    if(response){
+      toast.success("Free trial activated successfully!");
+      router.push("/dashboard");
+    }
     // TODO: Implement free trial logic here
     console.log("Free trial accepted");
-    router.push("/dashboard");
   };
 
   const handleChoosePlan = async (plan: "monthly" | "yearly") => {

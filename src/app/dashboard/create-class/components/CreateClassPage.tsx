@@ -37,6 +37,7 @@ import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { setActiveMessages } from "@/store/features/chatSlice";
 import { transformConversation } from "@/hooks/useTransformConversation";
+import { Separator } from "@/components/ui/separator";
 
 // Types for Class and Chat
 interface Class {

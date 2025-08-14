@@ -141,6 +141,25 @@ interface ClassRequest {
   nodes: string;
 }
 
+interface paymentUpdate{
+  checkout_url: string;
+}
+
+interface userPackageResponse {
+  username: string;
+  email: string;
+  about: string | null;
+  account_type: string;
+  profile_picture: string | null;
+}
+
+interface userTrialPackgeResponse {
+  message: string;
+  trial_start: string;
+  trial_end: string;
+  account_type: string;
+}
+
 // Error Type (for validation errors)
 interface ValidationError {
   loc: [string, number]; // Path to the error
@@ -475,12 +494,24 @@ export const apiSlice = createApi({
         { type: "Class", id: classId },
       ],
     }),
-    updateSubscription: builder.mutation({
-      query: (price_id)=>({
+
+    //payment api
+
+    updateSubscription: builder.mutation<paymentUpdate, string>({
+      query: (price_id) => ({
         url: "/api/payments/create-checkout-session/",
         method: "POST",
         body: { price_id }
       })
+    }),
+    updateStandartPackage: builder.mutation<userTrialPackgeResponse, void>({
+      query: () => ({
+        url: "/api/trial/accept/",
+        method: "POST",
+      })
+    }),
+    getUserpackage: builder.query<userPackageResponse, void>({
+      query: () => "/api/profile/",
     })
   }),
 });
@@ -518,5 +549,7 @@ export const {
   useAddPlanToClassMutation,
   useRemovePlanFromClassMutation,
   // Payment Hooks 
-  useUpdateSubscriptionMutation
+  useUpdateSubscriptionMutation,
+  useUpdateStandartPackageMutation,
+  useLazyGetUserpackageQuery
 } = apiSlice;
